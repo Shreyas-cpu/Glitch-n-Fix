@@ -74,7 +74,58 @@ async function startServer() {
 
   app.get("/api/watchlist", async (req, res) => {
     const db = await readDB();
-    res.json(db.watchlist);
+    res.json(Array.isArray(db.watchlist) ? db.watchlist : []);
+  });
+
+  // trending coins (proxied from CoinGecko)
+  app.get("/api/trending", async (req, res) => {
+    try {
+      const response = await fetch("https://api.coingecko.com/api/v3/search/trending");
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "CoinGecko trending failed" });
+      }
+      const json = await response.json();
+      const coins = (json.coins || []).map((e: any) => e.item || {});
+      res.json(coins);
+    } catch (error) {
+      console.error("Trending fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch trending data" });
+    }
+  });
+
+  // gemini price proxy (demonstrates using API key)
+  app.get("/api/gemini/price/:symbol?", async (req, res) => {
+    const symbol = (req.params.symbol || "btcusd").toLowerCase();
+    try {
+      const headers: any = {};
+      if (process.env.GEMINI_API_KEY) {
+        headers["X-GEMINI-APIKEY"] = process.env.GEMINI_API_KEY;
+      }
+      const response = await fetch(`https://api.gemini.com/v1/pubticker/${symbol}`, { headers });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Gemini API failed" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Gemini fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch Gemini price" });
+    }
+  });
+
+  // block info (public)
+  app.get("/api/blocks", async (req, res) => {
+    try {
+      const response = await fetch("https://api.blockcypher.com/v1/eth/main");
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Blockcypher failed" });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Blocks fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch block info" });
+    }
   });
 
   app.post("/api/watchlist", async (req, res) => {
@@ -114,7 +165,7 @@ async function startServer() {
       appType: "spa",
     });
 
-    app.use(vite.middlewores);
+    app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
     app.get("*", (req, res) => {

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "npm start & vite --open",
     "build": "tsc && vite build",
     "start": "node --loader ts-node/esm server.ts"
   },

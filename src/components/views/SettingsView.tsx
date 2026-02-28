@@ -15,13 +15,29 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-export const SettingsView = () => {
-  const [slippage, setSlippage] = useState("0.5%");
-  const [gasPriority, setGasPriority] = useState("Fast");
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [timeout, setTimeoutVal] = useState("1h");
-  const [theme, setTheme] = useState("Dark");
-  const [desktopNotifs, setDesktopNotifs] = useState(true);
+interface SettingsViewProps {
+  settings: {
+    slippage: string;
+    gasPriority: string;
+    twoFactor: boolean;
+    timeout: string;
+    theme: string;
+    desktopNotifs: boolean;
+  };
+  setSettings: React.Dispatch<React.SetStateAction<any>>;
+  onSave: () => void;
+  onRestore: () => void;
+  onDisconnect: () => void;
+}
+
+export const SettingsView = ({
+  settings,
+  setSettings,
+  onSave,
+  onRestore,
+  onDisconnect,
+}: SettingsViewProps) => {
+  const { slippage, gasPriority, twoFactor, timeout, theme, desktopNotifs } = settings;
 
   return (
     <div className="p-8 max-w-4xl mx-auto flex flex-col gap-6">
@@ -65,6 +81,7 @@ export const SettingsView = () => {
             <ActionBtn
               variant="danger"
               className="flex items-center gap-2 justify-center"
+              onClick={onDisconnect}
             >
               <LogOut size={16} /> Disconnect
             </ActionBtn>
@@ -85,7 +102,7 @@ export const SettingsView = () => {
             <PillSelector
               options={["0.1%", "0.5%", "1.0%", "Custom"]}
               selected={slippage}
-              onChange={setSlippage}
+              onChange={(val) => setSettings((s: any) => ({ ...s, slippage: val }))}
             />
           </div>
           <div className="flex flex-col gap-3">
@@ -95,7 +112,7 @@ export const SettingsView = () => {
             <PillSelector
               options={["Standard", "Fast", "Instant"]}
               selected={gasPriority}
-              onChange={setGasPriority}
+              onChange={(val) => setSettings((s: any) => ({ ...s, gasPriority: val }))}
             />
           </div>
           <div className="md:col-span-2">
@@ -121,7 +138,7 @@ export const SettingsView = () => {
             label="Two-Factor Authentication (2FA)"
             description="Require an authenticator app code for sensitive actions."
             enabled={twoFactor}
-            onChange={setTwoFactor}
+            onChange={(v) => setSettings((s: any) => ({ ...s, twoFactor: v }))}
           />
           <div className="h-px bg-[#1A1B1E] w-full" />
           <div className="flex items-center justify-between">
@@ -137,7 +154,7 @@ export const SettingsView = () => {
               <PillSelector
                 options={["15m", "1h", "Never"]}
                 selected={timeout}
-                onChange={setTimeoutVal}
+                onChange={(val) => setSettings((s: any) => ({ ...s, timeout: val }))}
               />
             </div>
           </div>
@@ -163,7 +180,7 @@ export const SettingsView = () => {
               <PillSelector
                 options={["Light", "System", "Dark"]}
                 selected={theme}
-                onChange={setTheme}
+                onChange={(val) => setSettings((s: any) => ({ ...s, theme: val }))}
               />
             </div>
           </div>
@@ -172,15 +189,19 @@ export const SettingsView = () => {
             label="Desktop Notifications"
             description="Receive alerts for executed trades and alerts."
             enabled={desktopNotifs}
-            onChange={setDesktopNotifs}
+            onChange={(v) => setSettings((s: any) => ({ ...s, desktopNotifs: v }))}
           />
         </div>
       </SettingsSection>
 
       {/* Save Actions */}
       <div className="flex justify-end gap-4 mt-2 mb-12">
-        <ActionBtn variant="secondary">Restore Defaults</ActionBtn>
-        <ActionBtn variant="primary">Save Changes</ActionBtn>
+          <ActionBtn variant="secondary" onClick={onRestore}>
+            Restore Defaults
+          </ActionBtn>
+        <ActionBtn variant="primary" onClick={onSave}>
+          Save Changes
+        </ActionBtn>
       </div>
     </div>
   );

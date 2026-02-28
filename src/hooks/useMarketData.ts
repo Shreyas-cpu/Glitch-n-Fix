@@ -14,11 +14,31 @@ export function useMarketData() {
   const { data: coins = [], isLoading } = useQuery({
     queryKey: ["marketData"],
     queryFn: async () => {
-      const res = await axios.get("/api/market");
-      return Array.isArray(res.data) ? res.data : [];
+      try {
+        const res = await axios.get("/api/market", { timeout: 5000 });
+        if (Array.isArray(res.data) && res.data.length) return res.data;
+      } catch (e) {
+        // fallback to direct CoinGecko if local proxy is unavailable
+      }
+
+      const fallback = await axios.get(
+        "https://api.coingecko.com/api/v3/coins/markets",
+        {
+          params: {
+            vs_currency: "usd",
+            order: "market_cap_desc",
+            per_page: 10,
+            page: 1,
+            sparkline: true,
+          },
+          timeout: 8000,
+        }
+      );
+      return Array.isArray(fallback.data) ? fallback.data : [];
     },
     refetchOnWindowFocus: false,
     staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 15, // poll every 15s for near real-time
   });
 
   const filteredCoins = useMemo(() => {

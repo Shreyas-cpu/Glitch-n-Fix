@@ -9,7 +9,8 @@ export function useWatchlist() {
     queryKey: ["watchlist"],
     queryFn: async () => {
       const res = await axios.get("/api/watchlist");
-      return res.data as WatchlistItem[];
+      const data = res.data;
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -31,6 +32,6 @@ export function useWatchlist() {
     watchlist,
     addToWatchlist,
     removeFromWatchlist,
-    watchlistIds: watchlist.map((i: WatchlistItem) => i.id),
+    watchlistIds: Array.isArray(watchlist) ? watchlist.map((i: WatchlistItem) => i.id) : [],
   };
 }

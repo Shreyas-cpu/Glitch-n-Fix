@@ -83,7 +83,7 @@ export const StyledInput = ({
 );
 
 // --- ActionBtn ---
-interface ActionBtnProps {
+interface ActionBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant: "primary" | "secondary" | "danger";
   children: React.ReactNode;
   className?: string;

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useTrending } from "../../hooks/useTrending";
+import { useGeminiPrice } from "../../hooks/useGeminiPrice";
 import { GainersLosersGrid, GainerLoser } from "../ui/GainersLosersGrid";
 import { SectorHeatmap, Sector } from "../ui/SectorHeatmap";
 import { TrendingTable, TrendingToken } from "../ui/TrendingTable";
@@ -109,9 +111,35 @@ export const TrendingView = () => {
     "volChange",
   );
 
-  const sortedTokens = [...MOCK_TRENDING_TOKENS].sort((a, b) => {
-    return b[sortField] - a[sortField];
+  const { data: trendingRaw = [] } = useTrending();
+  const { data: gemini } = useGeminiPrice("btcusd");
+
+  const derivedTokens: TrendingToken[] = (trendingRaw.length ? trendingRaw : MOCK_TRENDING_TOKENS.map((t) => ({
+    id: t.id,
+    symbol: t.symbol,
+    name: t.name,
+    price: t.price,
+    volChange: t.volChange,
+    sentiment: t.sentiment,
+    sparkline: t.sparkline,
+  } as TrendingToken))) .map((item: any, idx: number) => {
+    // when item comes from CoinGecko trending, it may have `price_btc`
+    const price = item.price_btc && gemini ? Number(item.price_btc) * Number(gemini.last) : (item.price || 0);
+    const volChange = item.volChange ?? (Math.random() * 60 - 20);
+    const sentiment = item.sentiment ?? Math.floor(30 + Math.random() * 70);
+    const sparkline = item.sparkline ?? generateSparkline(volChange > 0 ? "up" : "down");
+    return {
+      id: item.id || `t-${idx}`,
+      symbol: (item.symbol || item.id || "").toUpperCase(),
+      name: item.name || item.id || "Unknown",
+      price,
+      volChange,
+      sentiment,
+      sparkline,
+    } as TrendingToken;
   });
+
+  const sortedTokens = [...derivedTokens].sort((a, b) => b[sortField] - a[sortField]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto flex flex-col gap-8">

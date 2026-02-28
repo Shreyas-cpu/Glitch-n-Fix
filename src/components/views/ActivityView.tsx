@@ -4,6 +4,7 @@ import { Card } from "../ui/Card";
 import { TransactionTable, Transaction } from "../ui/TransactionTable";
 import { LiveFeedSidebar, BlockData } from "../ui/LiveFeedSidebar";
 import { Zap, Activity, ShieldCheck, Filter } from "lucide-react";
+import { useBlocks } from "../../hooks/useBlocks";
 
 // --- Mock Data ---
 const generateMockTransactions = (count: number): Transaction[] => {
@@ -55,9 +56,12 @@ export const ActivityView = () => {
   const [timeRange, setTimeRange] = useState("24H");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
+  // try to pull latest block info to populate live feed
+  const { data: blockInfo, refetch: refetchBlocks } = useBlocks();
+
   useEffect(() => {
     setTransactions(generateMockTransactions(15));
-  }, []); // Empty deps — runs once on mount only
+  }, []); // run once on mount
 
   const filteredTransactions = transactions.filter((tx) => {
     if (filterMethod !== "All" && tx.method !== filterMethod) return false;
@@ -96,6 +100,15 @@ export const ActivityView = () => {
             <h2 className="text-2xl font-bold text-white tracking-tight">
               Recent Transactions
             </h2>
+            <button
+              onClick={() => {
+                setTransactions(generateMockTransactions(15));
+                refetchBlocks();
+              }}
+              className="mt-2 sm:mt-0 px-3 py-1.5 text-xs bg-[#1A1B1E] rounded hover:bg-[#2A2B2E]"
+            >
+              Refresh
+            </button>
             <div className="flex items-center gap-3">
               <div className="relative group flex items-center">
                 <Filter size={16} className="absolute left-3 text-zinc-500" />
@@ -133,9 +146,24 @@ export const ActivityView = () => {
           </Card>
         </div>
 
-        {/* Sidebar: Live Feed */}
+        {/* Sidebar: Live Feed (real blocks if available) */}
         <div className="col-span-12 lg:col-span-4 max-h-[calc(100vh-16rem)] flex flex-col">
-          <LiveFeedSidebar blocks={MOCK_BLOCKS} />
+          <LiveFeedSidebar
+            blocks={
+              blockInfo
+                ? [
+                    {
+                      id: blockInfo.hash || "",
+                      blockNumber: blockInfo.height || 0,
+                      miner: blockInfo.miner || "unknown",
+                      txns: blockInfo.n_tx || 0,
+                      timeAgo: blockInfo.time ? "just now" : "",
+                      reward: blockInfo.fee_reward ? `${blockInfo.fee_reward} ETH` : "",
+                    },
+                  ]
+                : MOCK_BLOCKS
+            }
+          />
         </div>
       </div>
     </div>

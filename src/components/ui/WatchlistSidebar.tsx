@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { WatchlistItem } from "../../types/market";
 

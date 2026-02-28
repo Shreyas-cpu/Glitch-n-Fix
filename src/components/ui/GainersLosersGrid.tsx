@@ -1,5 +1,5 @@
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Card } from "./Card";
 
 export interface GainerLoser {

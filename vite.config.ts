@@ -16,7 +16,16 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
+      port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
+      // forward `/api` calls to the Express backend running on port 3000
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
   };
 });
