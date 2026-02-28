@@ -253,6 +253,105 @@ async function startServer() {
     res.json(db.transactions || []);
   });
 
+  // ── Stop Loss / Take Profit ──
+
+  // Set SL/TP for a holding
+  app.post("/api/portfolio/sltp", async (req, res) => {
+    const { coinId, stopLoss, takeProfit } = req.body;
+
+    if (!coinId || typeof coinId !== "string") {
+      return res.status(400).json({ error: "Invalid coinId" });
+    }
+    if (stopLoss !== null && stopLoss !== undefined) {
+      if (typeof stopLoss !== "number" || !Number.isFinite(stopLoss) || stopLoss < 0) {
+        return res.status(400).json({ error: "Invalid stopLoss value" });
+      }
+    }
+    if (takeProfit !== null && takeProfit !== undefined) {
+      if (typeof takeProfit !== "number" || !Number.isFinite(takeProfit) || takeProfit < 0) {
+        return res.status(400).json({ error: "Invalid takeProfit value" });
+      }
+    }
+
+    const db = await readDB();
+    if (!db.portfolio) db.portfolio = [];
+
+    const holding = db.portfolio.find((p: any) => p.coinId === coinId.trim().toLowerCase());
+    if (!holding) {
+      return res.status(404).json({ error: "Holding not found" });
+    }
+
+    holding.stopLoss = stopLoss ?? null;
+    holding.takeProfit = takeProfit ?? null;
+    await writeDB(db);
+
+    res.json({ holding });
+  });
+
+  // Check SL/TP triggers against current prices
+  app.post("/api/portfolio/check-sltp", async (req, res) => {
+    const { prices } = req.body; // { [coinId]: currentPrice }
+
+    if (!prices || typeof prices !== "object") {
+      return res.status(400).json({ error: "Invalid prices object" });
+    }
+
+    const db = await readDB();
+    if (!db.portfolio) db.portfolio = [];
+    if (!db.transactions) db.transactions = [];
+
+    const triggered: any[] = [];
+
+    for (const holding of [...db.portfolio]) {
+      const currentPrice = prices[holding.coinId];
+      if (typeof currentPrice !== "number" || !Number.isFinite(currentPrice)) continue;
+
+      let triggerType: "stop-loss" | "take-profit" | null = null;
+
+      if (holding.stopLoss && currentPrice <= holding.stopLoss) {
+        triggerType = "stop-loss";
+      } else if (holding.takeProfit && currentPrice >= holding.takeProfit) {
+        triggerType = "take-profit";
+      }
+
+      if (triggerType) {
+        const totalRevenue = holding.amount * currentPrice;
+        const pnl = (currentPrice - holding.avgPrice) * holding.amount;
+
+        // Record transaction
+        const tx = {
+          id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: "sell" as const,
+          coinId: holding.coinId,
+          symbol: holding.symbol,
+          name: holding.name,
+          amount: holding.amount,
+          pricePerUnit: currentPrice,
+          total: totalRevenue,
+          pnl,
+          trigger: triggerType,
+          timestamp: new Date().toISOString(),
+        };
+
+        db.transactions.unshift(tx);
+        triggered.push(tx);
+
+        // Remove holding
+        db.portfolio = db.portfolio.filter((p: any) => p.coinId !== holding.coinId);
+      }
+    }
+
+    if (db.transactions.length > 100) {
+      db.transactions = db.transactions.slice(0, 100);
+    }
+
+    if (triggered.length > 0) {
+      await writeDB(db);
+    }
+
+    res.json({ triggered, portfolio: db.portfolio });
+  });
+
   // ── Vite dev middleware or static serve ──
 
   if (process.env.NODE_ENV !== "production") {

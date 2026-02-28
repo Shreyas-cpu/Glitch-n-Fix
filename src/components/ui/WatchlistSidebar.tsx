@@ -5,9 +5,10 @@ import { WatchlistItem } from "../../types/market";
 interface WatchlistSidebarProps {
   items: WatchlistItem[];
   onRemove: (id: string) => void;
+  onItemClick?: (id: string) => void;
 }
 
-export const WatchlistSidebar = ({ items, onRemove }: WatchlistSidebarProps) => (
+export const WatchlistSidebar = ({ items, onRemove, onItemClick }: WatchlistSidebarProps) => (
   <div className="space-y-3">
     <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
       Watchlist ({items.length})
@@ -24,7 +25,8 @@ export const WatchlistSidebar = ({ items, onRemove }: WatchlistSidebarProps) => 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex justify-between items-center p-3 bg-[#151619] rounded-lg border border-[#1A1B1E] hover:border-[#2A2B2E] transition-colors"
+            className="flex justify-between items-center p-3 bg-[#151619] rounded-lg border border-[#1A1B1E] hover:border-emerald-500/50 transition-colors cursor-pointer"
+            onClick={() => onItemClick?.(item.id)}
           >
             <div className="flex items-center gap-3">
               <span className="text-white font-medium">{item.name}</span>
@@ -33,7 +35,7 @@ export const WatchlistSidebar = ({ items, onRemove }: WatchlistSidebarProps) => 
               </span>
             </div>
             <button
-              onClick={() => onRemove(item.id)}
+              onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
               className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-zinc-500 hover:text-red-400"
             >
               <Trash2 size={14} />

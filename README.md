@@ -1,6 +1,6 @@
 # Nexus Terminal — Crypto Market Dashboard
 
-A real-time cryptocurrency market dashboard built with **React 18**, **TypeScript**, **Vite**, **Express**, and **TanStack React Query**. Features live CoinGecko data, a full **buy/sell trading** system with portfolio management, watchlist CRUD, trending assets view, sector heatmap, activity feed, and settings panel.
+A real-time cryptocurrency market dashboard built with **React 18**, **TypeScript**, **Vite**, **Express**, and **TanStack React Query**. Features live CoinGecko data, a full **buy/sell trading** system with **Stop Loss / Take Profit**, portfolio management, watchlist CRUD, trending assets view, sector heatmap, activity feed, dark/light theme, and settings panel.
 
 Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 
@@ -10,14 +10,16 @@ Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 
 | Feature | Description |
 |---------|-------------|
-| **Dashboard** | Live market data with price charts, sortable table, and coin selection |
-| **Buy / Sell Trading** | Full end-to-end trading flow — click "Trade" on any coin, enter amount, execute buy or sell with real price data |
-| **Portfolio** | Tracks all holdings with live P&L, average cost basis, and current value enriched from live market prices |
-| **Watchlist** | Add/remove coins to a persistent watchlist stored server-side |
-| **Transaction History** | Complete log of all buy/sell trades with timestamps and P&L |
-| **Trending** | Top gainers/losers, sector heatmap, trending tokens with sparkline charts |
-| **Activity** | Simulated blockchain transactions and live network feed |
-| **Settings** | Wallet config, slippage, gas priority, security, and appearance |
+| **Dashboard** | Live market data (30s polling) with price charts, computed stats, sortable table, and coin selection |
+| **Buy / Sell Trading** | Full end-to-end trading — click "Trade" on any coin, enter amount, execute buy or sell at live price |
+| **Stop Loss / Take Profit** | Set SL/TP on any buy — auto-sells when price hits your target. Visible in portfolio and trade modal |
+| **Portfolio** | Tracks holdings with live P&L, avg cost basis, current value, SL/TP levels, and 24h change |
+| **Watchlist** | Add/remove coins; click a watchlist item to view its chart |
+| **Transaction History** | Complete log of all buy/sell trades with full timestamps, trigger type (manual/SL/TP), and P&L |
+| **Trending** | Real gainers/losers derived from market data, sector heatmap, trending tokens by volume |
+| **Activity** | Real order history with buy/sell filters and time-range filtering |
+| **Settings** | Dark / Light / System theme toggle, wallet config, slippage, gas priority |
+| **Real-Time** | 30-second data refresh, SL/TP monitoring loop, refetch on window focus |
 
 ### How Buy/Sell Works
 
@@ -25,12 +27,70 @@ Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 2. Clicking it opens a modal where you can toggle between **Buy** and **Sell**
 3. Enter the amount — the total cost/revenue is calculated at the current live price
 4. For sells, a "Max" button lets you sell your entire holding
-5. The server validates all inputs, updates the portfolio, records the transaction, and calculates P&L
-6. The **Portfolio** tab shows your holdings enriched with live prices and real-time profit/loss
+5. **Optionally** expand the "Set Stop Loss / Take Profit" section (buy mode) to configure automatic triggers
+6. The server validates all inputs, updates the portfolio, records the transaction, and calculates P&L
+7. The **Portfolio** tab shows holdings enriched with live prices, SL/TP levels, and real-time profit/loss
+
+### How Stop Loss / Take Profit Works
+
+1. When buying, expand the SL/TP section in the Trade Modal
+2. Enter a stop loss price (below current) and/or take profit price (above current)
+3. Percentage distance from current price is shown in real-time
+4. The Dashboard runs a background monitoring loop every 30 seconds
+5. If the market price hits your SL or TP, the position is automatically sold
+6. Triggered trades appear in Activity with a **SL** or **TP** badge
+
+### Interactive Features
+
+- **Sector Heatmap**: Click any sector to explore, color-coded by 24h performance
+- **Gainers/Losers Grid**: Click to view coin's chart, or trade directly with the Trade button
+- **Trending Table**: Sortable by volume or sentiment, click to navigate or trade
+- **Watchlist**: Click any item to focus the chart on that coin
+- **Theme**: Switch between Dark, Light, and System themes from Settings
 
 ---
 
-## Getting Started
+## User Manual
+
+### Getting Started
+
+1. **Install & Run**: `npm install && npx tsx server.ts` → Open http://localhost:3000
+2. **Browse Market**: The Dashboard shows live prices for top 25 cryptocurrencies
+3. **View a Chart**: Click any coin row to see its 7-day sparkline chart
+4. **Search**: Use the search bar to filter coins by name or symbol
+
+### Trading
+
+1. Click **Trade** on any coin in the Market Table, Trending, or Gainers/Losers view
+2. Select **Buy** or **Sell** tab
+3. Enter the amount you want to trade
+4. (Optional) Expand **Stop Loss / Take Profit** to set automatic triggers
+5. Click **Confirm Buy** or **Confirm Sell**
+6. Check **Portfolio** tab to see your holdings and P&L
+
+### Watchlist
+
+1. Click the **+** button on any coin row to add it to your watchlist
+2. View your watchlist in the right sidebar
+3. Click a watchlist item to view its chart
+4. Click the trash icon to remove
+
+### Theme Switching
+
+1. Go to **Settings** tab
+2. Under **Appearance**, select Dark, Light, or System
+3. Theme persists across sessions via localStorage
+
+### Activity / Order History
+
+1. Go to the **Activity** tab
+2. Filter by trade type (All / Buys / Sells) and time range (1h / 24h / 7d)
+3. Stats show total trades, volume, and buy/sell ratio
+4. Trades triggered by Stop Loss or Take Profit show a yellow badge
+
+---
+
+## Getting Started (Developer)
 
 ### Prerequisites
 
@@ -78,45 +138,63 @@ NODE_ENV=production npx tsx server.ts
 
 ---
 
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/market` | Fetch top 25 coins from CoinGecko (60s server cache) |
+| GET | `/api/watchlist` | Get watchlist items |
+| POST | `/api/watchlist` | Add item to watchlist |
+| DELETE | `/api/watchlist/:id` | Remove from watchlist |
+| GET | `/api/portfolio` | Get portfolio holdings |
+| POST | `/api/portfolio/buy` | Buy a coin (params: coinId, symbol, name, amount, pricePerUnit) |
+| POST | `/api/portfolio/sell` | Sell a coin (params: coinId, amount, pricePerUnit) |
+| POST | `/api/portfolio/sltp` | Set Stop Loss / Take Profit on a holding |
+| POST | `/api/portfolio/check-sltp` | Check if any SL/TP triggers hit against current prices |
+| GET | `/api/transactions` | Get all trade transactions |
+
+---
+
 ## Project Structure
 
 ```
-├── server.ts              # Express backend (CoinGecko proxy, watchlist CRUD, portfolio buy/sell, transactions)
+├── server.ts              # Express backend (CoinGecko proxy, watchlist, portfolio, SL/TP, transactions)
 ├── vite.config.ts         # Vite build configuration with Vitest test config
 ├── tsconfig.json          # TypeScript compiler config
 ├── data.json              # JSON file database (watchlist + portfolio + transactions persistence)
 ├── index.html             # HTML entry point
 ├── src/
 │   ├── main.tsx           # React entry point
-│   ├── App.tsx            # Root component with React Query provider
-│   ├── index.css          # Tailwind CSS v4 + global styles
-│   ├── types/market.ts    # TypeScript interfaces (Coin, WatchlistItem, PortfolioHolding, TradeTransaction)
+│   ├── App.tsx            # Root component with ThemeProvider + QueryClientProvider
+│   ├── index.css          # Tailwind CSS v4 + global styles + light mode overrides
+│   ├── types/market.ts    # Interfaces (Coin, WatchlistItem, PortfolioHolding, TradeTransaction, SLTPConfig)
 │   ├── hooks/
-│   │   ├── useMarketData.ts    # React Query hook for market data
+│   │   ├── useMarketData.ts    # React Query hook for market data (30s polling)
 │   │   ├── useWatchlist.ts     # React Query hook for watchlist CRUD
-│   │   └── usePortfolio.ts     # React Query hook for portfolio buy/sell/transactions
+│   │   ├── usePortfolio.ts     # React Query hook for portfolio buy/sell/SL-TP/transactions
+│   │   └── useTheme.tsx        # ThemeProvider context (Dark/Light/System)
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── Dashboard.tsx   # Main dashboard orchestrator with all views
+│   │   │   ├── Dashboard.tsx   # Main orchestrator — real stats, SL/TP monitor, all views
 │   │   │   ├── Header.tsx      # Top bar with search and wallet connect
-│   │   │   └── Sidebar.tsx     # Navigation sidebar
+│   │   │   └── Sidebar.tsx     # Navigation sidebar (Dashboard, Portfolio, Activity, Trending, Settings)
 │   │   ├── ui/
 │   │   │   ├── Card.tsx
 │   │   │   ├── StatCard.tsx
 │   │   │   ├── MarketTable.tsx       # Sortable market table with Trade buttons
-│   │   │   ├── TradeModal.tsx        # Buy/Sell modal with validation, status, and P&L
-│   │   │   ├── WatchlistSidebar.tsx
-│   │   │   ├── GainersLosersGrid.tsx
+│   │   │   ├── TradeModal.tsx        # Buy/Sell modal with SL/TP inputs
+│   │   │   ├── WatchlistSidebar.tsx  # Clickable watchlist items + remove
+│   │   │   ├── GainersLosersGrid.tsx # Interactive gainers/losers with Trade
 │   │   │   ├── LiveFeedSidebar.tsx
-│   │   │   ├── SectorHeatmap.tsx
+│   │   │   ├── SectorHeatmap.tsx     # Interactive heatmap with click/selection
 │   │   │   ├── SettingsComponents.tsx
 │   │   │   ├── TransactionTable.tsx
-│   │   │   └── TrendingTable.tsx
+│   │   │   └── TrendingTable.tsx     # Interactive rows with Trade buttons
 │   │   └── views/
-│   │       ├── ActivityView.tsx
-│   │       ├── PortfolioView.tsx     # Portfolio holdings + recent trades
-│   │       ├── SettingsView.tsx
-│   │       └── TrendingView.tsx
+│   │       ├── ActivityView.tsx      # Real order history from trade data
+│   │       ├── PortfolioView.tsx     # Holdings + SL/TP levels + full timestamps
+│   │       ├── SettingsView.tsx      # Theme toggle + settings
+│   │       └── TrendingView.tsx      # Real gainers/losers/sectors from market data
 │   └── __tests__/
 │       ├── setup.ts           # Test setup (jest-dom)
 │       ├── market.test.ts     # Type correctness tests (6 tests)
@@ -134,19 +212,28 @@ NODE_ENV=production npx tsx server.ts
 | 2 | **Critical** | Vite config named `URMAMA.ts` with wrong imports (`vibe`, `@tailwindercss/vite`, `plugin-reaction`) | vite.config.ts | Renamed to `vite.config.ts`, fixed all imports |
 | 3 | **Critical** | `tsconfig.json` was empty | tsconfig.json | Added full TypeScript config for React/Vite |
 | 4 | **Critical** | `data.json` contained leaked `GEMINI_API_KEY` | data.json | Replaced with proper JSON DB structure |
-| 5 | **Critical** | `market.ts` exported `Cain`/`Able` instead of `Coin`/`WatchlistItem` | src/types/market.ts | Fixed type names, added `PortfolioHolding` and `TradeTransaction` |
+| 5 | **Critical** | `market.ts` exported `Cain`/`Able` instead of `Coin`/`WatchlistItem` | src/types/market.ts | Fixed type names, added `PortfolioHolding`, `TradeTransaction`, `SLTPConfig` |
 | 6 | **Critical** | `server.ts` used `vite.middlewores` (typo) | server.ts | Fixed to `vite.middlewares` |
 | 7 | **High** | **No buy/sell trading functionality** — core feature entirely missing | Multiple files | Added complete buy/sell flow: server endpoints, TradeModal, PortfolioView, usePortfolio hook |
 | 8 | **High** | **No portfolio management** — `data.json` had `portfolio: []` but no UI/API | Multiple files | Built full portfolio view with live P&L enrichment |
-| 9 | **High** | Empty hook files (`useMarketData.ts`, `useWatchlist.ts`) | src/hooks/ | Implemented with React Query |
-| 10 | **High** | Empty dead file `DashboardLayout.tsx` | src/components/ui/ | Removed |
-| 11 | **High** | `index.css` imported wrong Tailwind package | src/index.css | Fixed to `tailwindcss` v4 |
-| 12 | **High** | 13+ components had wrong imports, garbage code | All UI files | Complete rewrite of all components |
-| 13 | **Medium** | `.env.example` contained JSON data (swapped with data.json) | .env.example | Restored proper env template |
-| 14 | **Medium** | No tests at all | src/__tests__/ | Added 40 tests across 3 test files |
-| 15 | **Security** | API key leaked in `data.json` | data.json, .gitignore | Removed key, `.gitignore` updated |
-| 16 | **Security** | No input validation on API endpoints | server.ts | Added type checks, sanitization, length limits, NaN/Infinity guards |
-| 17 | **Security** | No bounds checking on amounts (could send negative or infinite values) | server.ts | Added `Number.isFinite()` checks and upper bounds |
+| 9 | **High** | **No Stop Loss / Take Profit** — no SL/TP feature at all | server.ts, TradeModal, usePortfolio, types | End-to-end SL/TP: server endpoints, modal UI, background monitoring, trigger badges |
+| 10 | **High** | Trending/Gainers/Losers used hardcoded mock data | TrendingView.tsx | Derived from real CoinGecko market data |
+| 11 | **High** | Activity view used random mock transactions | ActivityView.tsx | Wired to real trade history from usePortfolio |
+| 12 | **High** | No theme switching — always dark mode | Multiple files | Added ThemeProvider (Dark/Light/System) with CSS overrides |
+| 13 | **High** | Empty hook files (`useMarketData.ts`, `useWatchlist.ts`) | src/hooks/ | Implemented with React Query + 30s polling |
+| 14 | **High** | No real-time data refresh — 5 min stale time | useMarketData, Dashboard | Changed to 30s polling + refetch on window focus |
+| 15 | **High** | Dashboard stats hardcoded ("$2.48T", "$84.2B", "52.4%") | Dashboard.tsx | Computed from real market data |
+| 16 | **High** | Chart gradient ID collision when switching coins | Dashboard.tsx | Made unique per selectedCoinId |
+| 17 | **Medium** | Watchlist items not clickable — couldn't select coin for chart | WatchlistSidebar, Dashboard | Added onItemClick → setSelectedCoinId |
+| 18 | **Medium** | Timestamps showed date only, no time | PortfolioView.tsx | Changed to toLocaleString() for full date+time |
+| 19 | **Medium** | Empty dead file `DashboardLayout.tsx` | src/components/ui/ | Removed |
+| 20 | **Medium** | `index.css` imported wrong Tailwind package | src/index.css | Fixed to `tailwindcss` v4 |
+| 21 | **Medium** | 13+ components had wrong imports, garbage code | All UI files | Complete rewrite of all components |
+| 22 | **Medium** | `.env.example` contained JSON data (swapped with data.json) | .env.example | Restored proper env template |
+| 23 | **Medium** | No tests at all | src/__tests__/ | Added 40 tests across 3 test files |
+| 24 | **Security** | API key leaked in `data.json` | data.json, .gitignore | Removed key, `.gitignore` updated |
+| 25 | **Security** | No input validation on API endpoints | server.ts | Added type checks, sanitization, length limits, NaN/Infinity guards |
+| 26 | **Security** | No bounds checking on amounts (could send negative or infinite values) | server.ts | Added `Number.isFinite()` checks and upper bounds |
 
 ---
 
@@ -175,24 +262,3 @@ NODE_ENV=production npx tsx server.ts
 | Charts | Recharts |
 | Icons | Lucide React |
 | Testing | Vitest, Testing Library |
-
----
-
-## Suggested Git Commit History
-
-```
-chore: initial broken codebase — baseline for Glitch & Fix 2026
-fix(config): restore package.json, tsconfig.json, vite.config.ts
-fix(types): correct Cain/Able → Coin/WatchlistItem exports
-fix(server): fix middlewares typo, add try/catch to readDB
-fix(components): rewrite all UI components with correct imports
-feat(trade): add buy/sell endpoints with validation and P&L tracking
-feat(ui): add TradeModal component for buy/sell flow
-feat(portfolio): add PortfolioView with live P&L enrichment
-feat(hooks): implement useMarketData, useWatchlist, usePortfolio
-feat(nav): add Portfolio tab to sidebar navigation
-security: add NaN/Infinity guards and input sanitization
-test: add 40 tests for types, API flows, and input validation
-chore: remove dead DashboardLayout.tsx, clean .gitignore
-docs: update README with full documentation and fix log
-```

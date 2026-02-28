@@ -1,54 +1,87 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { GainersLosersGrid, GainerLoser } from "../ui/GainersLosersGrid";
 import { SectorHeatmap, Sector } from "../ui/SectorHeatmap";
 import { TrendingTable, TrendingToken } from "../ui/TrendingTable";
 import { Card } from "../ui/Card";
-import { Filter } from "lucide-react";
+import { Filter, Loader2 } from "lucide-react";
 import { Coin } from "../../types/market";
+import { useMarketData } from "../../hooks/useMarketData";
 
-const MOCK_GAINERS: GainerLoser[] = [
-  { id: "g1", symbol: "PEPE", name: "Pepe", price: 0.0000124, change: 42.5 },
-  { id: "g2", symbol: "WIF", name: "dogwifhat", price: 2.85, change: 28.3 },
-  { id: "g3", symbol: "BONK", name: "Bonk", price: 0.0000234, change: 21.1 },
-  { id: "g4", symbol: "FET", name: "Fetch.ai", price: 2.15, change: 18.7 },
-  { id: "g5", symbol: "RNDR", name: "Render", price: 8.42, change: 15.2 },
-];
+/** Derive top gainers from real market data */
+function deriveGainers(coins: Coin[]): GainerLoser[] {
+  return [...coins]
+    .filter((c) => c.price_change_percentage_24h > 0)
+    .sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h)
+    .slice(0, 5)
+    .map((c) => ({
+      id: c.id,
+      symbol: c.symbol.toUpperCase(),
+      name: c.name,
+      price: c.current_price,
+      change: c.price_change_percentage_24h,
+    }));
+}
 
-const MOCK_LOSERS: GainerLoser[] = [
-  { id: "l1", symbol: "SHIB", name: "Shiba Inu", price: 0.0000089, change: -18.4 },
-  { id: "l2", symbol: "DYDX", name: "dYdX", price: 1.85, change: -15.2 },
-  { id: "l3", symbol: "APE", name: "ApeCoin", price: 1.12, change: -12.8 },
-  { id: "l4", symbol: "SAND", name: "The Sandbox", price: 0.42, change: -10.5 },
-  { id: "l5", symbol: "MANA", name: "Decentraland", price: 0.38, change: -8.9 },
-];
+/** Derive top losers from real market data */
+function deriveLosers(coins: Coin[]): GainerLoser[] {
+  return [...coins]
+    .filter((c) => c.price_change_percentage_24h < 0)
+    .sort((a, b) => a.price_change_percentage_24h - b.price_change_percentage_24h)
+    .slice(0, 5)
+    .map((c) => ({
+      id: c.id,
+      symbol: c.symbol.toUpperCase(),
+      name: c.name,
+      price: c.current_price,
+      change: c.price_change_percentage_24h,
+    }));
+}
 
-const MOCK_SECTORS: Sector[] = [
-  { id: "s1", name: "DeFi", marketCap: 89e9, change: 4.2 },
-  { id: "s2", name: "Layer 2", marketCap: 32e9, change: -2.1 },
-  { id: "s3", name: "GameFi", marketCap: 18e9, change: 7.8 },
-  { id: "s4", name: "AI & Big Data", marketCap: 24e9, change: 12.4 },
-  { id: "s5", name: "Meme Coins", marketCap: 55e9, change: -5.3 },
-  { id: "s6", name: "Infrastructure", marketCap: 42e9, change: 1.5 },
-];
+/** Derive sector heatmap from real market data by grouping coins */
+function deriveSectors(coins: Coin[]): Sector[] {
+  const sectorMap: Record<string, { names: string[]; marketCap: number; changes: number[] }> = {
+    "Smart Contracts": { names: ["ethereum", "solana", "cardano", "avalanche-2"], marketCap: 0, changes: [] },
+    "Store of Value": { names: ["bitcoin", "litecoin"], marketCap: 0, changes: [] },
+    "DeFi": { names: ["chainlink", "uniswap", "aave"], marketCap: 0, changes: [] },
+    "Stablecoins": { names: ["tether", "usd-coin", "dai"], marketCap: 0, changes: [] },
+    "Meme Coins": { names: ["dogecoin", "shiba-inu", "pepe"], marketCap: 0, changes: [] },
+    "Exchange": { names: ["binancecoin", "crypto-com-chain", "okb"], marketCap: 0, changes: [] },
+  };
 
-const generateSparkline = (trend: "up" | "down" | "flat"): number[] => {
-  let current = 100;
-  return Array.from({ length: 20 }).map(() => {
-    const change = (Math.random() - 0.5) * 10;
-    const direction = trend === "up" ? 2 : trend === "down" ? -2 : 0;
-    current = current + change + direction;
-    return Math.max(0, current);
-  });
-};
+  for (const coin of coins) {
+    for (const [sector, data] of Object.entries(sectorMap)) {
+      if (data.names.includes(coin.id)) {
+        data.marketCap += coin.market_cap || 0;
+        data.changes.push(coin.price_change_percentage_24h);
+      }
+    }
+  }
 
-const MOCK_TRENDING_TOKENS: TrendingToken[] = [
-  { id: "t1", symbol: "SOL", name: "Solana", price: 145.2, volChange: 45.2, sentiment: 88, sparkline: generateSparkline("up") },
-  { id: "t2", symbol: "DOGE", name: "Dogecoin", price: 0.154, volChange: 124.5, sentiment: 92, sparkline: generateSparkline("up") },
-  { id: "t3", symbol: "LINK", name: "Chainlink", price: 18.4, volChange: 12.4, sentiment: 65, sparkline: generateSparkline("flat") },
-  { id: "t4", symbol: "ARB", name: "Arbitrum", price: 1.15, volChange: -15.4, sentiment: 45, sparkline: generateSparkline("down") },
-  { id: "t5", symbol: "AVAX", name: "Avalanche", price: 38.5, volChange: 5.2, sentiment: 58, sparkline: generateSparkline("up") },
-  { id: "t6", symbol: "TON", name: "Toncoin", price: 6.8, volChange: 84.1, sentiment: 75, sparkline: generateSparkline("up") },
-];
+  return Object.entries(sectorMap)
+    .filter(([, d]) => d.changes.length > 0)
+    .map(([name, d], i) => ({
+      id: `sector-${i}`,
+      name,
+      marketCap: d.marketCap,
+      change: d.changes.reduce((a, b) => a + b, 0) / d.changes.length,
+    }));
+}
+
+/** Derive trending tokens from real market data (by volume and 24h change) */
+function deriveTrending(coins: Coin[]): TrendingToken[] {
+  return [...coins]
+    .sort((a, b) => (b.total_volume ?? 0) - (a.total_volume ?? 0))
+    .slice(0, 8)
+    .map((c) => ({
+      id: c.id,
+      symbol: c.symbol.toUpperCase(),
+      name: c.name,
+      price: c.current_price,
+      volChange: c.price_change_percentage_24h,
+      sentiment: Math.min(99, Math.max(5, 50 + Math.round(c.price_change_percentage_24h * 5))),
+      sparkline: c.sparkline_in_7d?.price ?? [],
+    }));
+}
 
 /** Convert any trending-view token into a Coin for the TradeModal */
 function toTradeCoin(token: { id: string; symbol: string; name: string; price: number; change?: number }): Coin {
@@ -68,11 +101,20 @@ interface TrendingViewProps {
 }
 
 export const TrendingView = ({ onTrade, onNavigateToDashboard }: TrendingViewProps) => {
+  const { data: coins = [], isLoading } = useMarketData();
   const [sortField, setSortField] = useState<"volChange" | "sentiment">("volChange");
   const [selectedSectorId, setSelectedSectorId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
 
-  const sortedTokens = [...MOCK_TRENDING_TOKENS].sort((a, b) => b[sortField] - a[sortField]);
+  const gainers = useMemo(() => deriveGainers(coins), [coins]);
+  const losers = useMemo(() => deriveLosers(coins), [coins]);
+  const sectors = useMemo(() => deriveSectors(coins), [coins]);
+  const trending = useMemo(() => deriveTrending(coins), [coins]);
+
+  const sortedTokens = useMemo(
+    () => [...trending].sort((a, b) => b[sortField] - a[sortField]),
+    [trending, sortField]
+  );
 
   const handleTokenTrade = (token: { id: string; symbol: string; name: string; price: number; change?: number }) => {
     onTrade?.(toTradeCoin(token));
@@ -85,87 +127,94 @@ export const TrendingView = ({ onTrade, onNavigateToDashboard }: TrendingViewPro
 
   const handleSectorClick = (sector: Sector) => {
     setSelectedSectorId((prev) => (prev === sector.id ? null : sector.id));
-    onNavigateToDashboard?.(sector.name);
-  };
-
-  const handleGainerLoserTrade = (token: GainerLoser) => {
-    handleTokenTrade(token);
-  };
-
-  const handleGainerLoserClick = (token: GainerLoser) => {
-    handleTokenClick(token);
-  };
-
-  const handleTrendingTrade = (token: TrendingToken) => {
-    handleTokenTrade({ ...token, change: token.volChange });
-  };
-
-  const handleTrendingClick = (token: TrendingToken) => {
-    handleTokenClick(token);
   };
 
   return (
     <div className="p-8 max-w-7xl mx-auto flex flex-col gap-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-auto lg:h-[400px]">
-        <GainersLosersGrid
-          gainers={MOCK_GAINERS}
-          losers={MOCK_LOSERS}
-          onTokenClick={handleGainerLoserClick}
-          onTrade={handleGainerLoserTrade}
-        />
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white tracking-tight">Sector Heatmap</h2>
-            <span className="text-xs text-zinc-500">Click a sector to explore</span>
-          </div>
-          <div className="flex-1">
-            <SectorHeatmap
-              sectors={MOCK_SECTORS}
-              onSectorClick={handleSectorClick}
-              selectedSectorId={selectedSectorId}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 size={32} className="text-emerald-500 animate-spin" />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-auto lg:h-[400px]">
+            <GainersLosersGrid
+              gainers={gainers}
+              losers={losers}
+              onTokenClick={handleGainerLoserClick}
+              onTrade={handleGainerLoserTrade}
             />
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white tracking-tight">Sector Heatmap</h2>
+                <span className="text-xs text-zinc-500">Click a sector to explore</span>
+              </div>
+              <div className="flex-1">
+                <SectorHeatmap
+                  sectors={sectors}
+                  onSectorClick={handleSectorClick}
+                  selectedSectorId={selectedSectorId}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="flex flex-col gap-4 mt-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Trending Assets</h2>
-            <p className="text-sm text-zinc-500 mt-1">Based on volume momentum and social sentiment</p>
+          <div className="flex flex-col gap-4 mt-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">Trending Assets</h2>
+                <p className="text-sm text-zinc-500 mt-1">Based on volume momentum and social sentiment</p>
+              </div>
+              <div className="flex bg-[#151619] p-1 rounded-lg border border-[#1A1B1E]">
+                <button
+                  onClick={() => setSortField("volChange")}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
+                    sortField === "volChange"
+                      ? "bg-[#1A1B1E] text-white shadow-sm border border-[#2A2B2E]"
+                      : "text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent"
+                  }`}
+                >
+                  <Filter size={14} /> By Volume
+                </button>
+                <button
+                  onClick={() => setSortField("sentiment")}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
+                    sortField === "sentiment"
+                      ? "bg-[#1A1B1E] text-white shadow-sm border border-[#2A2B2E]"
+                      : "text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent"
+                  }`}
+                >
+                  <Filter size={14} /> By Sentiment
+                </button>
+              </div>
+            </div>
+            <Card>
+              <TrendingTable
+                tokens={sortedTokens}
+                onTokenClick={handleTrendingClick}
+                onTrade={handleTrendingTrade}
+                selectedTokenId={selectedTokenId}
+              />
+            </Card>
           </div>
-          <div className="flex bg-[#151619] p-1 rounded-lg border border-[#1A1B1E]">
-            <button
-              onClick={() => setSortField("volChange")}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
-                sortField === "volChange"
-                  ? "bg-[#1A1B1E] text-white shadow-sm border border-[#2A2B2E]"
-                  : "text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent"
-              }`}
-            >
-              <Filter size={14} /> By Volume
-            </button>
-            <button
-              onClick={() => setSortField("sentiment")}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
-                sortField === "sentiment"
-                  ? "bg-[#1A1B1E] text-white shadow-sm border border-[#2A2B2E]"
-                  : "text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent"
-              }`}
-            >
-              <Filter size={14} /> By Sentiment
-            </button>
-          </div>
-        </div>
-        <Card>
-          <TrendingTable
-            tokens={sortedTokens}
-            onTokenClick={handleTrendingClick}
-            onTrade={handleTrendingTrade}
-            selectedTokenId={selectedTokenId}
-          />
-        </Card>
-      </div>
+        </>
+      )}
     </div>
   );
+
+  function handleGainerLoserTrade(token: GainerLoser) {
+    handleTokenTrade(token);
+  }
+
+  function handleGainerLoserClick(token: GainerLoser) {
+    handleTokenClick(token);
+  }
+
+  function handleTrendingTrade(token: TrendingToken) {
+    handleTokenTrade({ ...token, change: token.volChange });
+  }
+
+  function handleTrendingClick(token: TrendingToken) {
+    handleTokenClick(token);
+  }
 };

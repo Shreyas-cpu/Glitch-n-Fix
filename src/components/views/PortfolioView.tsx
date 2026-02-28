@@ -98,6 +98,7 @@ export const PortfolioView = () => {
                       <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Avg Price</th>
                       <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Current</th>
                       <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Value</th>
+                      <th className="px-6 py-4 text-xs text-zinc-500 uppercase">SL / TP</th>
                       <th className="px-6 py-4 text-xs text-zinc-500 uppercase text-right">P&L</th>
                     </tr>
                   </thead>
@@ -129,6 +130,20 @@ export const PortfolioView = () => {
                         </td>
                         <td className="px-6 py-4 text-white font-mono font-bold">
                           ${h.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs space-y-0.5">
+                            {h.stopLoss ? (
+                              <div className="text-red-400">SL: ${h.stopLoss.toLocaleString()}</div>
+                            ) : (
+                              <div className="text-zinc-600">SL: —</div>
+                            )}
+                            {h.takeProfit ? (
+                              <div className="text-emerald-400">TP: ${h.takeProfit.toLocaleString()}</div>
+                            ) : (
+                              <div className="text-zinc-600">TP: —</div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className={`font-mono font-bold ${h.pnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -182,11 +197,16 @@ export const PortfolioView = () => {
                         }`}>
                           {tx.type}
                         </span>
+                        {tx.trigger && tx.trigger !== "manual" && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 font-medium">
+                            {tx.trigger === "stop-loss" ? "SL" : "TP"}
+                          </span>
+                        )}
                         <span className="text-sm text-white font-semibold">{tx.symbol}</span>
                       </div>
                       <span className="text-xs text-zinc-500 flex items-center gap-1">
                         <Clock size={10} />
-                        {new Date(tx.timestamp).toLocaleDateString()}
+                        {new Date(tx.timestamp).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">

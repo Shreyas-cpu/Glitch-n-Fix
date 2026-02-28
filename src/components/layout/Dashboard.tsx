@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -25,6 +25,8 @@ import {
   Tooltip,
 } from "recharts";
 import { Coin, WatchlistItem } from "../../types/market";
+import { useMarketData } from "../../hooks/useMarketData";
+import { usePortfolio } from "../../hooks/usePortfolio";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -39,20 +41,33 @@ export default function Dashboard() {
   });
   const [tradeCoin, setTradeCoin] = useState<Coin | null>(null);
 
-  // Fetch Market Data
-  const {
-    data: coins = [],
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["marketData"],
-    queryFn: async () => {
-      const res = await axios.get("/api/market");
-      return Array.isArray(res.data) ? (res.data as Coin[]) : [];
-    },
-    refetchOnWindowFocus: false,
-    staleTime: 1000 * 60 * 5,
-  });
+  // Use shared market data hook (30s polling)
+  const { data: coins = [], isLoading, isError } = useMarketData();
+
+  // Portfolio for SL/TP monitoring
+  const { portfolio, checkSLTP } = usePortfolio();
+
+  // SL/TP monitoring: check triggers every 30s when there are holdings with SL/TP
+  const sltpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (sltpTimerRef.current) clearInterval(sltpTimerRef.current);
+
+    const hasAny = portfolio.some((h) => h.stopLoss || h.takeProfit);
+    if (!hasAny || coins.length === 0) return;
+
+    const runCheck = () => {
+      const prices: Record<string, number> = {};
+      for (const coin of coins) prices[coin.id] = coin.current_price;
+      checkSLTP(prices);
+    };
+
+    // Check immediately on new data
+    runCheck();
+
+    // Then every 30s
+    sltpTimerRef.current = setInterval(runCheck, 30_000);
+    return () => { if (sltpTimerRef.current) clearInterval(sltpTimerRef.current); };
+  }, [portfolio, coins, checkSLTP]);
 
   // Set default selected coin
   useEffect(() => {
@@ -121,6 +136,29 @@ export default function Dashboard() {
 
   const watchlistIds = watchlist.map((i) => i.id);
 
+  /* Compute real stats from market data */
+  const totalMarketCap = useMemo(() => coins.reduce((s, c) => s + (c.market_cap || 0), 0), [coins]);
+  const totalVolume = useMemo(() => coins.reduce((s, c) => s + (c.total_volume || 0), 0), [coins]);
+  const btcCoin = useMemo(() => coins.find((c) => c.id === "bitcoin"), [coins]);
+  const btcDominance = useMemo(
+    () => (totalMarketCap > 0 && btcCoin ? ((btcCoin.market_cap || 0) / totalMarketCap) * 100 : 0),
+    [totalMarketCap, btcCoin]
+  );
+  const avgChange = useMemo(
+    () => (coins.length ? coins.reduce((s, c) => s + c.price_change_percentage_24h, 0) / coins.length : 0),
+    [coins]
+  );
+
+  const formatLargeNumber = (n: number) => {
+    if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+    if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+    if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+    return `$${n.toLocaleString()}`;
+  };
+
+  /* Unique gradient id per coin */
+  const gradientId = `chartGrad-${selectedCoinId || "default"}`;
+
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-zinc-300 font-sans">
       <Sidebar activeTab={activeTab} onChangeTab={setActiveTab} />
@@ -137,9 +175,9 @@ export default function Dashboard() {
           <div className="p-8 max-w-7xl mx-auto grid grid-cols-12 gap-8">
             {/* Stats Row */}
             <div className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard title="Global Market Cap" value="$2.48T" change={2.4} icon={TrendingUp} />
-              <StatCard title="24h Volume" value="$84.2B" change={-1.2} icon={Activity} />
-              <StatCard title="BTC Dominance" value="52.4%" change={0.8} icon={ShieldCheck} />
+              <StatCard title="Global Market Cap" value={formatLargeNumber(totalMarketCap)} change={avgChange} icon={TrendingUp} />
+              <StatCard title="24h Volume" value={formatLargeNumber(totalVolume)} change={0} icon={Activity} />
+              <StatCard title="BTC Dominance" value={`${btcDominance.toFixed(1)}%`} change={btcCoin?.price_change_percentage_24h ?? 0} icon={ShieldCheck} />
             </div>
 
             {/* Chart + Table */}
@@ -193,7 +231,7 @@ export default function Dashboard() {
                           }))}
                         >
                           <defs>
-                            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                               <stop
                                 offset="5%"
                                 stopColor={
@@ -232,7 +270,7 @@ export default function Dashboard() {
                               selectedCoinData.price_change_percentage_24h >= 0 ? "#10b981" : "#ef4444"
                             }
                             fillOpacity={1}
-                            fill="url(#colorPrice)"
+                            fill={`url(#${gradientId})`}
                             strokeWidth={2}
                           />
                         </AreaChart>
@@ -262,6 +300,7 @@ export default function Dashboard() {
               <WatchlistSidebar
                 items={watchlist}
                 onRemove={(id) => removeFromWatchlist.mutate(id)}
+                onItemClick={(id) => setSelectedCoinId(id)}
               />
             </div>
           </div>

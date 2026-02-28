@@ -9,8 +9,9 @@ export function useMarketData() {
       const res = await axios.get("/api/market");
       return Array.isArray(res.data) ? (res.data as Coin[]) : [];
     },
-    refetchOnWindowFocus: false,
-    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000, // Poll every 30 seconds for real-time feel
+    staleTime: 25_000,
     retry: 2,
   });
 }
