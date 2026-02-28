@@ -13,6 +13,38 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, "data.json");
 
+// ── Logger Utility ──────────────────────────────────────────────────
+const LOG_COLORS = {
+  reset: "\x1b[0m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  gray: "\x1b[90m",
+};
+
+const log = {
+  _fmt(level: string, color: string, msg: string, meta?: Record<string, any>) {
+    const ts = new Date().toISOString();
+    const metaStr = meta ? ` ${JSON.stringify(meta)}` : "";
+    console.log(`${color}[${ts}] [${level}]${LOG_COLORS.reset} ${msg}${LOG_COLORS.gray}${metaStr}${LOG_COLORS.reset}`);
+  },
+  info(msg: string, meta?: Record<string, any>) { this._fmt("INFO", LOG_COLORS.blue, msg, meta); },
+  success(msg: string, meta?: Record<string, any>) { this._fmt("OK", LOG_COLORS.green, msg, meta); },
+  warn(msg: string, meta?: Record<string, any>) { this._fmt("WARN", LOG_COLORS.yellow, msg, meta); },
+  error(msg: string, meta?: Record<string, any>) { this._fmt("ERROR", LOG_COLORS.red, msg, meta); },
+  request(method: string, url: string, status: number, durationMs: number) {
+    const color = status >= 500 ? LOG_COLORS.red : status >= 400 ? LOG_COLORS.yellow : LOG_COLORS.green;
+    const ts = new Date().toISOString();
+    console.log(`${LOG_COLORS.cyan}[${ts}] [REQ]${LOG_COLORS.reset} ${method} ${url} ${color}${status}${LOG_COLORS.reset} ${LOG_COLORS.gray}${durationMs}ms${LOG_COLORS.reset}`);
+  },
+  delta(msg: string, meta?: Record<string, any>) { this._fmt("DELTA", LOG_COLORS.magenta, msg, meta); },
+  auth(msg: string, meta?: Record<string, any>) { this._fmt("AUTH", LOG_COLORS.cyan, msg, meta); },
+  trade(msg: string, meta?: Record<string, any>) { this._fmt("TRADE", LOG_COLORS.yellow, msg, meta); },
+};
+
 // ── Caches ──────────────────────────────────────────────────────────
 let marketCache: any = null;
 let lastFetchTime = 0;
@@ -30,6 +62,20 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // ── Request Logger Middleware ──────────────────────────────────────
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const originalEnd = res.end.bind(res);
+    (res as any).end = (...args: any[]) => {
+      const duration = Date.now() - start;
+      log.request(req.method, req.originalUrl, res.statusCode, duration);
+      return (originalEnd as Function)(...args);
+    };
+    next();
+  });
+
+  log.info("Initializing server...");
 
   const readDB = async () => {
     try {
@@ -70,14 +116,18 @@ async function startServer() {
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { name, email, password } = req.body;
+      log.auth(`Signup attempt`, { email });
 
       if (!name || typeof name !== "string" || name.trim().length < 2) {
+        log.auth("Signup rejected: name too short", { email });
         return res.status(400).json({ error: "Name must be at least 2 characters" });
       }
       if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        log.auth("Signup rejected: invalid email");
         return res.status(400).json({ error: "Invalid email address" });
       }
       if (!password || typeof password !== "string" || password.length < 6) {
+        log.auth("Signup rejected: weak password", { email });
         return res.status(400).json({ error: "Password must be at least 6 characters" });
       }
 
@@ -86,6 +136,7 @@ async function startServer() {
 
       const existing = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
       if (existing) {
+        log.auth("Signup rejected: email already exists", { email });
         return res.status(409).json({ error: "Email already registered" });
       }
 
@@ -102,12 +153,13 @@ async function startServer() {
       await writeDB(db);
 
       const token = signToken(user);
+      log.auth(`Signup successful`, { userId: user.id, email: user.email });
       res.status(201).json({
         token,
         user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
       });
     } catch (err) {
-      console.error("Signup error:", err);
+      log.error("Signup error", { error: (err as Error).message });
       res.status(500).json({ error: "Registration failed" });
     }
   });
@@ -116,6 +168,7 @@ async function startServer() {
   app.post("/api/auth/signin", async (req, res) => {
     try {
       const { email, password } = req.body;
+      log.auth("Signin attempt", { email });
 
       if (!email || typeof email !== "string") {
         return res.status(400).json({ error: "Email is required" });
@@ -129,27 +182,31 @@ async function startServer() {
 
       const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
       if (!user) {
+        log.auth("Signin failed: user not found", { email });
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
+        log.auth("Signin failed: wrong password", { email });
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
       const token = signToken(user);
+      log.auth("Signin successful", { userId: user.id, email: user.email });
       res.json({
         token,
         user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
       });
     } catch (err) {
-      console.error("Signin error:", err);
+      log.error("Signin error", { error: (err as Error).message });
       res.status(500).json({ error: "Login failed" });
     }
   });
 
   // ── Auth: Get Current User (verify token) ──
   app.get("/api/auth/me", authMiddleware, (req: any, res) => {
+    log.auth("Token verified", { userId: req.user.id });
     res.json({ user: req.user });
   });
 
@@ -158,10 +215,12 @@ async function startServer() {
     const now = Date.now();
 
     if (marketCache && now - lastFetchTime < CACHE_DURATION) {
+      log.info("Market data served from cache", { age: `${Math.round((now - lastFetchTime) / 1000)}s` });
       return res.json(marketCache);
     }
 
     try {
+      log.info("Fetching market data from CoinGecko...");
       const response = await fetch(
         "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=true"
       );
@@ -175,9 +234,10 @@ async function startServer() {
       const data = await response.json();
       marketCache = data;
       lastFetchTime = now;
+      log.success(`Market data fetched`, { coins: data.length });
       res.json(data);
     } catch (error) {
-      console.error("Market fetch error:", error);
+      log.error("Market fetch error", { error: (error as Error).message });
       res.status(500).json({ error: "Failed to fetch market data" });
     }
   });
@@ -191,6 +251,7 @@ async function startServer() {
 
   app.post("/api/watchlist", async (req, res) => {
     const { item } = req.body;
+    log.info("Adding to watchlist", { coinId: item?.id });
 
     if (
       !item ||
@@ -216,6 +277,9 @@ async function startServer() {
     if (!db.watchlist.find((i: any) => i.id === sanitizedItem.id)) {
       db.watchlist.push(sanitizedItem);
       await writeDB(db);
+      log.success("Added to watchlist", { coinId: sanitizedItem.id, total: db.watchlist.length });
+    } else {
+      log.info("Already in watchlist", { coinId: sanitizedItem.id });
     }
 
     res.json(db.watchlist);
@@ -223,6 +287,7 @@ async function startServer() {
 
   app.delete("/api/watchlist/:id", async (req, res) => {
     const { id } = req.params;
+    log.info("Removing from watchlist", { coinId: id });
 
     if (!id || typeof id !== "string") {
       return res.status(400).json({ error: "Invalid id" });
@@ -230,9 +295,11 @@ async function startServer() {
 
     const db = await readDB();
     if (!db.watchlist) db.watchlist = [];
+    const prevLen = db.watchlist.length;
     db.watchlist = db.watchlist.filter((i: any) => i.id !== id);
     await writeDB(db);
 
+    log.success("Removed from watchlist", { coinId: id, removed: prevLen !== db.watchlist.length });
     res.json(db.watchlist);
   });
 
@@ -246,6 +313,7 @@ async function startServer() {
   // BUY – adds to portfolio, records transaction
   app.post("/api/portfolio/buy", async (req, res) => {
     const { coinId, symbol, name, amount, pricePerUnit } = req.body;
+    log.trade("BUY order received", { coinId, symbol, amount, pricePerUnit });
 
     // Input validation
     if (!coinId || typeof coinId !== "string" || !coinId.trim()) {
@@ -305,12 +373,14 @@ async function startServer() {
     }
 
     await writeDB(db);
+    log.trade("BUY executed", { coinId: coinId.trim().toLowerCase(), amount, total: totalCost, holdings: db.portfolio.length });
     res.json({ portfolio: db.portfolio, transaction: db.transactions[0] });
   });
 
   // SELL – removes from portfolio, records transaction
   app.post("/api/portfolio/sell", async (req, res) => {
     const { coinId, amount, pricePerUnit } = req.body;
+    log.trade("SELL order received", { coinId, amount, pricePerUnit });
 
     if (!coinId || typeof coinId !== "string") {
       return res.status(400).json({ error: "Invalid coinId" });
@@ -364,6 +434,8 @@ async function startServer() {
     }
 
     await writeDB(db);
+    const pnl = (pricePerUnit - existing.avgPrice) * amount;
+    log.trade("SELL executed", { coinId: coinId.trim().toLowerCase(), amount, total: amount * pricePerUnit, pnl: pnl.toFixed(2) });
     res.json({ portfolio: db.portfolio, transaction: db.transactions[0] });
   });
 
@@ -378,6 +450,7 @@ async function startServer() {
   // Set SL/TP for a holding
   app.post("/api/portfolio/sltp", async (req, res) => {
     const { coinId, stopLoss, takeProfit } = req.body;
+    log.trade("Setting SL/TP", { coinId, stopLoss, takeProfit });
 
     if (!coinId || typeof coinId !== "string") {
       return res.status(400).json({ error: "Invalid coinId" });
@@ -405,6 +478,7 @@ async function startServer() {
     holding.takeProfit = takeProfit ?? null;
     await writeDB(db);
 
+    log.trade("SL/TP updated", { coinId, stopLoss: holding.stopLoss, takeProfit: holding.takeProfit });
     res.json({ holding });
   });
 
@@ -435,6 +509,7 @@ async function startServer() {
       }
 
       if (triggerType) {
+        log.trade(`SL/TP TRIGGERED: ${triggerType}`, { coinId: holding.coinId, currentPrice, stopLoss: holding.stopLoss, takeProfit: holding.takeProfit });
         const totalRevenue = holding.amount * currentPrice;
         const pnl = (currentPrice - holding.avgPrice) * holding.amount;
 
@@ -467,6 +542,7 @@ async function startServer() {
 
     if (triggered.length > 0) {
       await writeDB(db);
+      log.trade(`SL/TP check complete: ${triggered.length} triggered`, { coins: triggered.map((t: any) => t.coinId) });
     }
 
     res.json({ triggered, portfolio: db.portfolio });
@@ -476,8 +552,10 @@ async function startServer() {
 
   // Status check — is Delta API configured?
   app.get("/api/delta/status", (_req, res) => {
+    const configured = delta.isDeltaConfigured();
+    log.delta("Status check", { configured });
     res.json({
-      configured: delta.isDeltaConfigured(),
+      configured,
       baseUrl: process.env.DELTA_API_BASE_URL || "https://api.delta.exchange",
     });
   });
@@ -486,27 +564,34 @@ async function startServer() {
   app.get("/api/delta/tickers", async (_req, res) => {
     const now = Date.now();
     if (deltaTickerCache && now - deltaTickerCacheTime < DELTA_CACHE_DURATION) {
+      log.delta("Tickers served from cache", { age: `${Math.round((now - deltaTickerCacheTime) / 1000)}s` });
       return res.json(deltaTickerCache);
     }
     try {
+      log.delta("Fetching tickers from Delta Exchange...");
       const tickers = await delta.getTickers();
       deltaTickerCache = tickers;
       deltaTickerCacheTime = now;
+      log.delta("Tickers fetched", { count: Array.isArray(tickers) ? tickers.length : 0 });
       res.json(tickers);
     } catch (err: any) {
-      console.error("Delta tickers error:", err.message);
-      // Return cached data if available, else empty
+      log.error("Delta tickers error", { error: err.message });
       res.json(deltaTickerCache || []);
     }
   });
 
   // Single ticker
   app.get("/api/delta/ticker/:symbol", async (req, res) => {
+    log.delta("Fetching ticker", { symbol: req.params.symbol });
     try {
       const ticker = await delta.getTicker(req.params.symbol);
-      if (!ticker) return res.status(404).json({ error: "Ticker not found" });
+      if (!ticker) {
+        log.warn("Ticker not found", { symbol: req.params.symbol });
+        return res.status(404).json({ error: "Ticker not found" });
+      }
       res.json(ticker);
     } catch (err: any) {
+      log.error("Delta ticker error", { symbol: req.params.symbol, error: err.message });
       res.status(err.status || 500).json({ error: err.message, kind: err.kind });
     }
   });
@@ -515,15 +600,18 @@ async function startServer() {
   app.get("/api/delta/products", async (_req, res) => {
     const now = Date.now();
     if (deltaProductCache && now - deltaProductCacheTime < CACHE_DURATION) {
+      log.delta("Products served from cache", { age: `${Math.round((now - deltaProductCacheTime) / 1000)}s` });
       return res.json(deltaProductCache);
     }
     try {
+      log.delta("Fetching products from Delta Exchange...");
       const products = await delta.getProducts();
       deltaProductCache = products;
       deltaProductCacheTime = now;
+      log.delta("Products fetched", { count: Array.isArray(products) ? products.length : 0 });
       res.json(products);
     } catch (err: any) {
-      console.error("Delta products error:", err.message);
+      log.error("Delta products error", { error: err.message });
       res.json(deltaProductCache || []);
     }
   });
@@ -534,10 +622,13 @@ async function startServer() {
     const resolution = (req.query.resolution as string) || "1h";
     const start = req.query.start ? Number(req.query.start) : undefined;
     const end = req.query.end ? Number(req.query.end) : undefined;
+    log.delta("Fetching candles", { symbol, resolution });
     try {
       const candles = await delta.getHistoricalPrices(symbol, resolution, start, end);
+      log.delta("Candles fetched", { symbol, count: Array.isArray(candles) ? candles.length : 0 });
       res.json(candles);
     } catch (err: any) {
+      log.error("Delta candles error", { symbol, error: err.message });
       res.status(err.status || 500).json({ error: err.message, kind: err.kind });
     }
   });
@@ -545,13 +636,16 @@ async function startServer() {
   // Order book
   app.get("/api/delta/orderbook/:productId", async (req, res) => {
     const productId = Number(req.params.productId);
+    log.delta("Fetching orderbook", { productId });
     if (!Number.isFinite(productId) || productId <= 0) {
       return res.status(400).json({ error: "Invalid product ID" });
     }
     try {
       const book = await delta.getOrderBook(productId);
+      log.delta("Orderbook fetched", { productId });
       res.json(book);
     } catch (err: any) {
+      log.error("Delta orderbook error", { productId, error: err.message });
       res.status(err.status || 500).json({ error: err.message, kind: err.kind });
     }
   });
@@ -559,6 +653,7 @@ async function startServer() {
   // Place order (authenticated)
   app.post("/api/delta/orders", async (req, res) => {
     const { product_id, side, size, order_type, limit_price, stop_price, stop_order_type } = req.body;
+    log.delta("Placing order", { product_id, side, size, order_type });
 
     // Validate required fields
     if (!product_id || typeof product_id !== "number") {
@@ -584,8 +679,10 @@ async function startServer() {
         stop_price,
         stop_order_type,
       });
+      log.delta("Order placed successfully", { product_id, side, size, orderId: order?.id });
       res.json(order);
     } catch (err: any) {
+      log.error("Delta place order error", { product_id, side, size, error: err.message });
       const status = err.status && err.status > 0 ? err.status : 500;
       res.status(status).json({ error: err.message, kind: err.kind });
     }
@@ -593,10 +690,13 @@ async function startServer() {
 
   // Get positions (authenticated)
   app.get("/api/delta/positions", async (_req, res) => {
+    log.delta("Fetching positions");
     try {
       const positions = await delta.getPositions();
+      log.delta("Positions fetched", { count: Array.isArray(positions) ? positions.length : 0 });
       res.json(positions);
     } catch (err: any) {
+      log.error("Delta positions error", { error: err.message });
       const status = err.status && err.status > 0 ? err.status : 500;
       res.status(status).json({ error: err.message, kind: err.kind });
     }
@@ -605,10 +705,13 @@ async function startServer() {
   // Get open orders (authenticated)
   app.get("/api/delta/orders", async (req, res) => {
     const productId = req.query.product_id ? Number(req.query.product_id) : undefined;
+    log.delta("Fetching open orders", { productId });
     try {
       const orders = await delta.getOpenOrders(productId);
+      log.delta("Open orders fetched", { count: Array.isArray(orders) ? orders.length : 0 });
       res.json(orders);
     } catch (err: any) {
+      log.error("Delta open orders error", { error: err.message });
       const status = err.status && err.status > 0 ? err.status : 500;
       res.status(status).json({ error: err.message, kind: err.kind });
     }
@@ -617,10 +720,13 @@ async function startServer() {
   // Get trade history / fills (authenticated)
   app.get("/api/delta/fills", async (req, res) => {
     const productId = req.query.product_id ? Number(req.query.product_id) : undefined;
+    log.delta("Fetching trade fills", { productId });
     try {
       const fills = await delta.getTradeHistory(productId);
+      log.delta("Fills fetched", { count: Array.isArray(fills) ? fills.length : 0 });
       res.json(fills);
     } catch (err: any) {
+      log.error("Delta fills error", { error: err.message });
       const status = err.status && err.status > 0 ? err.status : 500;
       res.status(status).json({ error: err.message, kind: err.kind });
     }
@@ -629,13 +735,16 @@ async function startServer() {
   // Cancel order (authenticated)
   app.delete("/api/delta/orders", async (req, res) => {
     const { id, product_id } = req.body;
+    log.delta("Cancelling order", { orderId: id, product_id });
     if (!id || !product_id) {
       return res.status(400).json({ error: "id and product_id required" });
     }
     try {
       await delta.cancelOrder(id, product_id);
+      log.delta("Order cancelled", { orderId: id, product_id });
       res.json({ success: true });
     } catch (err: any) {
+      log.error("Delta cancel order error", { orderId: id, error: err.message });
       const status = err.status && err.status > 0 ? err.status : 500;
       res.status(status).json({ error: err.message, kind: err.kind });
     }
@@ -643,10 +752,13 @@ async function startServer() {
 
   // Delta wallet / balances (authenticated)
   app.get("/api/delta/wallet", async (_req, res) => {
+    log.delta("Fetching wallet");
     try {
       const wallet = await delta.getPortfolio();
+      log.delta("Wallet fetched");
       res.json(wallet);
     } catch (err: any) {
+      log.error("Delta wallet error", { error: err.message });
       const status = err.status && err.status > 0 ? err.status : 500;
       res.status(status).json({ error: err.message, kind: err.kind });
     }
@@ -668,8 +780,13 @@ async function startServer() {
     });
   }
 
+  log.info("Setting up Vite middleware...");
+
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    log.success(`Server running on http://localhost:${PORT}`, {
+      deltaConfigured: delta.isDeltaConfigured(),
+      env: process.env.NODE_ENV || "development",
+    });
   });
 }
 
