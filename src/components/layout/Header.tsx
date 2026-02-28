@@ -1,5 +1,6 @@
 import React from "react";
-import { Wallet, Search } from "lucide-react";
+import { Wallet, Search, LogOut, User } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
 
 interface HeaderProps {
   walletConnected: boolean;
@@ -14,6 +15,8 @@ export default function Header({
   searchQuery,
   setSearchQuery,
 }: HeaderProps) {
+  const { user, signOut } = useAuth();
+
   return (
     <header className="h-20 border-b border-[#141414] flex items-center justify-between px-8 bg-[#0A0A0B]/80 backdrop-blur-md sticky top-0 z-40">
       <div className="flex items-center gap-4">
@@ -53,6 +56,28 @@ export default function Header({
           <Wallet size={16} />
           {walletConnected ? "0x71C...3E2" : "Connect Wallet"}
         </button>
+
+        {/* User profile + Sign Out */}
+        {user && (
+          <div className="flex items-center gap-3 pl-3 border-l border-zinc-800">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <User size={14} className="text-emerald-400" />
+              </div>
+              <span className="text-sm text-zinc-300 font-medium max-w-[120px] truncate">
+                {user.name}
+              </span>
+            </div>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+              title="Sign Out"
+            >
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

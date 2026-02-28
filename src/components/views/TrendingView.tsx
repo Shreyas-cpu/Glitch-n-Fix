@@ -3,7 +3,8 @@ import { GainersLosersGrid, GainerLoser } from "../ui/GainersLosersGrid";
 import { SectorHeatmap, Sector } from "../ui/SectorHeatmap";
 import { TrendingTable, TrendingToken } from "../ui/TrendingTable";
 import { Card } from "../ui/Card";
-import { Filter, Loader2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowRightLeft, X, Filter, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Coin } from "../../types/market";
 import { useMarketData } from "../../hooks/useMarketData";
 
@@ -39,13 +40,13 @@ function deriveLosers(coins: Coin[]): GainerLoser[] {
 
 /** Derive sector heatmap from real market data by grouping coins */
 function deriveSectors(coins: Coin[]): Sector[] {
-  const sectorMap: Record<string, { names: string[]; marketCap: number; changes: number[] }> = {
-    "Smart Contracts": { names: ["ethereum", "solana", "cardano", "avalanche-2"], marketCap: 0, changes: [] },
-    "Store of Value": { names: ["bitcoin", "litecoin"], marketCap: 0, changes: [] },
-    "DeFi": { names: ["chainlink", "uniswap", "aave"], marketCap: 0, changes: [] },
-    "Stablecoins": { names: ["tether", "usd-coin", "dai"], marketCap: 0, changes: [] },
-    "Meme Coins": { names: ["dogecoin", "shiba-inu", "pepe"], marketCap: 0, changes: [] },
-    "Exchange": { names: ["binancecoin", "crypto-com-chain", "okb"], marketCap: 0, changes: [] },
+  const sectorMap: Record<string, { names: string[]; marketCap: number; changes: number[]; foundIds: string[] }> = {
+    "Smart Contracts": { names: ["ethereum", "solana", "cardano", "avalanche-2"], marketCap: 0, changes: [], foundIds: [] },
+    "Store of Value": { names: ["bitcoin", "litecoin"], marketCap: 0, changes: [], foundIds: [] },
+    "DeFi": { names: ["chainlink", "uniswap", "aave"], marketCap: 0, changes: [], foundIds: [] },
+    "Stablecoins": { names: ["tether", "usd-coin", "dai"], marketCap: 0, changes: [], foundIds: [] },
+    "Meme Coins": { names: ["dogecoin", "shiba-inu", "pepe"], marketCap: 0, changes: [], foundIds: [] },
+    "Exchange": { names: ["binancecoin", "crypto-com-chain", "okb"], marketCap: 0, changes: [], foundIds: [] },
   };
 
   for (const coin of coins) {
@@ -53,6 +54,7 @@ function deriveSectors(coins: Coin[]): Sector[] {
       if (data.names.includes(coin.id)) {
         data.marketCap += coin.market_cap || 0;
         data.changes.push(coin.price_change_percentage_24h);
+        data.foundIds.push(coin.id);
       }
     }
   }
@@ -64,6 +66,7 @@ function deriveSectors(coins: Coin[]): Sector[] {
       name,
       marketCap: d.marketCap,
       change: d.changes.reduce((a, b) => a + b, 0) / d.changes.length,
+      coinIds: d.foundIds,
     }));
 }
 
@@ -97,7 +100,7 @@ function toTradeCoin(token: { id: string; symbol: string; name: string; price: n
 
 interface TrendingViewProps {
   onTrade?: (coin: Coin) => void;
-  onNavigateToDashboard?: (searchQuery: string) => void;
+  onNavigateToDashboard?: (searchQuery: string, coinId?: string) => void;
 }
 
 export const TrendingView = ({ onTrade, onNavigateToDashboard }: TrendingViewProps) => {
@@ -116,13 +119,23 @@ export const TrendingView = ({ onTrade, onNavigateToDashboard }: TrendingViewPro
     [trending, sortField]
   );
 
+  // Sector drill-down: find selected sector and its coins
+  const selectedSector = useMemo(
+    () => sectors.find((s) => s.id === selectedSectorId) ?? null,
+    [sectors, selectedSectorId]
+  );
+  const sectorCoins = useMemo(
+    () => (selectedSector ? coins.filter((c) => selectedSector.coinIds.includes(c.id)) : []),
+    [coins, selectedSector]
+  );
+
   const handleTokenTrade = (token: { id: string; symbol: string; name: string; price: number; change?: number }) => {
     onTrade?.(toTradeCoin(token));
   };
 
   const handleTokenClick = (token: { name: string; id?: string }) => {
     setSelectedTokenId(token.id ?? null);
-    onNavigateToDashboard?.(token.name);
+    onNavigateToDashboard?.(token.name, token.id);
   };
 
   const handleSectorClick = (sector: Sector) => {
@@ -158,6 +171,87 @@ export const TrendingView = ({ onTrade, onNavigateToDashboard }: TrendingViewPro
               </div>
             </div>
           </div>
+
+          {/* Sector Drill-Down Panel */}
+          <AnimatePresence>
+            {selectedSector && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{selectedSector.name}</h3>
+                      <p className="text-sm text-zinc-500 mt-0.5">
+                        {sectorCoins.length} coin{sectorCoins.length !== 1 ? "s" : ""} &middot; Avg{" "}
+                        <span className={selectedSector.change >= 0 ? "text-emerald-400" : "text-red-400"}>
+                          {selectedSector.change >= 0 ? "+" : ""}{selectedSector.change.toFixed(2)}%
+                        </span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedSectorId(null)}
+                      className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-zinc-400 hover:text-white"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {sectorCoins.map((coin) => {
+                      const isPositive = coin.price_change_percentage_24h >= 0;
+                      return (
+                        <motion.div
+                          key={coin.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleTokenClick({ name: coin.name, id: coin.id })}
+                          className="flex items-center justify-between p-4 rounded-xl bg-[#1A1B1E] border border-[#2A2B2E] hover:border-zinc-500 transition-all cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#151619] border border-[#2A2B2E] flex items-center justify-center text-xs font-bold text-white uppercase">
+                              {coin.symbol.substring(0, 3)}
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-white">{coin.name}</div>
+                              <div className="text-xs text-zinc-500 uppercase">{coin.symbol}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-sm font-mono text-white">
+                                ${coin.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                              </div>
+                              <div className={`text-xs flex items-center justify-end gap-1 ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
+                                {isPositive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                                {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
+                              </div>
+                            </div>
+                            {onTrade && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTrade(coin);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-semibold hover:bg-emerald-500/20 flex items-center gap-1"
+                              >
+                                <ArrowRightLeft size={10} />
+                                Trade
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="flex flex-col gap-4 mt-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

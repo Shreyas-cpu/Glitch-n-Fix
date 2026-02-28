@@ -4,6 +4,8 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import * as delta from "./src/lib/deltaClient.js";
 
 dotenv.config();
@@ -34,13 +36,122 @@ async function startServer() {
       const data = await fs.readFile(DB_PATH, "utf-8");
       return JSON.parse(data);
     } catch {
-      return { watchlist: [], portfolio: [], transactions: [] };
+      return { users: [], watchlist: [], portfolio: [], transactions: [] };
     }
   };
 
   const writeDB = async (data: any) => {
     await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2));
   };
+
+  const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_change_me";
+  const JWT_EXPIRES = "7d";
+
+  // Helper: generate JWT
+  const signToken = (user: { id: string; email: string; name: string }) =>
+    jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+
+  // Helper: verify JWT middleware
+  const authMiddleware = (req: any, res: any, next: any) => {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+    try {
+      const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
+      req.user = decoded;
+      next();
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+  };
+
+  // ── Auth: Sign Up ──
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const { name, email, password } = req.body;
+
+      if (!name || typeof name !== "string" || name.trim().length < 2) {
+        return res.status(400).json({ error: "Name must be at least 2 characters" });
+      }
+      if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+      if (!password || typeof password !== "string" || password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      const db = await readDB();
+      if (!db.users) db.users = [];
+
+      const existing = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+      if (existing) {
+        return res.status(409).json({ error: "Email already registered" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = {
+        id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: name.trim().substring(0, 50),
+        email: email.trim().toLowerCase().substring(0, 100),
+        password: hashedPassword,
+        createdAt: new Date().toISOString(),
+      };
+
+      db.users.push(user);
+      await writeDB(db);
+
+      const token = signToken(user);
+      res.status(201).json({
+        token,
+        user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
+      });
+    } catch (err) {
+      console.error("Signup error:", err);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  // ── Auth: Sign In ──
+  app.post("/api/auth/signin", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      if (!password || typeof password !== "string") {
+        return res.status(400).json({ error: "Password is required" });
+      }
+
+      const db = await readDB();
+      if (!db.users) db.users = [];
+
+      const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      const valid = await bcrypt.compare(password, user.password);
+      if (!valid) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      const token = signToken(user);
+      res.json({
+        token,
+        user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
+      });
+    } catch (err) {
+      console.error("Signin error:", err);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // ── Auth: Get Current User (verify token) ──
+  app.get("/api/auth/me", authMiddleware, (req: any, res) => {
+    res.json({ user: req.user });
+  });
 
   // Market Data (CoinGecko proxy with cache)
   app.get("/api/market", async (_req, res) => {

@@ -323,8 +323,9 @@ export default function Dashboard() {
         ) : activeTab === "trending" ? (
           <TrendingView
             onTrade={(coin) => setTradeCoin(coin)}
-            onNavigateToDashboard={(query) => {
+            onNavigateToDashboard={(query, coinId) => {
               setSearchQuery(query);
+              if (coinId) setSelectedCoinId(coinId);
               setActiveTab("dashboard");
             }}
           />

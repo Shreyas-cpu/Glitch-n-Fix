@@ -5,6 +5,7 @@ export interface Sector {
   name: string;
   marketCap: number;
   change: number;
+  coinIds: string[];
 }
 
 interface SectorHeatmapProps {
