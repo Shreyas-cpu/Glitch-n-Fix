@@ -103,3 +103,24 @@
 | Vite compile `SettingsView.tsx` | ✅ 200 OK                                             |
 | Vite compile `ActivityView.tsx` | ✅ 200 OK                                             |
 | Server error logs               | ✅ No errors                                          |
+
+### 13:45 — Trading & Profile Feature Implementations
+
+#### New Components Created
+
+| File                     | Change                                                          |
+| ------------------------ | --------------------------------------------------------------- |
+| `AuthModal.tsx`          | **[NEW]** Added basic UI for authentication                     |
+| `WalletConnectModal.tsx` | **[NEW]** Setup wallet login and mock ETH balance               |
+| `TradePanel.tsx`         | **[NEW]** Buy and sell asset logic with balance checking        |
+| `RecentTrades.tsx`       | **[NEW]** Renders recent buy/sell activity                      |
+| `ProfileView.tsx`        | **[NEW]** Shows accurate crypto holdings, calculated off trades |
+
+#### Architecture Updates
+
+| File               | Change                                                          |
+| ------------------ | --------------------------------------------------------------- |
+| `Dashboard.tsx`    | Hoisted states for settings, authentication, wallet, and trades |
+| `ActivityView.tsx` | Wired to use live trade history instead of mock data            |
+| `SettingsView.tsx` | Wired properly into `SettingsState` controlled component        |
+| `main.tsx`         | **[NEW]** Added `ErrorBoundary` wrapper to catch React crashes  |

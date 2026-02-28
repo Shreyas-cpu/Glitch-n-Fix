@@ -65,24 +65,36 @@
 
 This is a Web3 project (Track B). No Wikipedia/LLM endpoints exist.
 
+### ✅ F13 — White Screen Crash (Runtime)
+
+**Root Cause**: Optional chaining evaluated to undefined on `selectedCoinData`, but `toUpperCase()` was immediately chained, causing React to hard crash on initial API load.
+**Fix**: Added strict optional chaining `?.toUpperCase()` in `Dashboard.tsx` and `TradePanel.tsx`. Protected the app root with `ErrorBoundary` in `main.tsx`.
+
+### ✅ F14 — Vite Syntax Error
+
+**Root Cause**: A duplicated `export const TrendingView = () => {` line was accidentally present in `TrendingView.tsx`.
+**Fix**: Removed duplicate line to allow Vite to compile successfully.
+
 ---
 
 ## Summary
 
-| ID  | Category      | Severity    | Status   |
-| --- | ------------- | ----------- | -------- |
-| F1  | Infinite Loop | ⚠️ Medium   | ✅ Fixed |
-| F2  | Infinite Loop | 🔴 High     | ✅ Fixed |
-| F3  | Error Logic   | 🔴 High     | ✅ Fixed |
-| F4  | Error Logic   | 🔴 High     | ✅ Fixed |
-| F5  | Error Logic   | 🔴 High     | ✅ Fixed |
-| F6  | Injection     | 🔴 High     | ✅ Fixed |
-| F7  | Injection     | ⚠️ Medium   | ✅ Fixed |
-| F8  | Security      | 🔴 Critical | ✅ Fixed |
-| F9  | API Wiring    | 🔴 Critical | ✅ Fixed |
-| F10 | API Wiring    | ⚠️ Medium   | ✅ Fixed |
-| F11 | N/A           | ℹ️          | N/A      |
-| F12 | UI            | ⚠️ Low      | ✅ Fixed |
+| ID  | Category       | Severity    | Status   |
+| --- | -------------- | ----------- | -------- |
+| F1  | Infinite Loop  | ⚠️ Medium   | ✅ Fixed |
+| F2  | Infinite Loop  | 🔴 High     | ✅ Fixed |
+| F3  | Error Logic    | 🔴 High     | ✅ Fixed |
+| F4  | Error Logic    | 🔴 High     | ✅ Fixed |
+| F5  | Error Logic    | 🔴 High     | ✅ Fixed |
+| F6  | Injection      | 🔴 High     | ✅ Fixed |
+| F7  | Injection      | ⚠️ Medium   | ✅ Fixed |
+| F8  | Security       | 🔴 Critical | ✅ Fixed |
+| F9  | API Wiring     | 🔴 Critical | ✅ Fixed |
+| F10 | API Wiring     | ⚠️ Medium   | ✅ Fixed |
+| F11 | N/A            | ℹ️          | N/A      |
+| F12 | UI             | ⚠️ Low      | ✅ Fixed |
+| F13 | React Runtime  | 🔴 High     | ✅ Fixed |
+| F14 | Build / Syntax | 🔴 High     | ✅ Fixed |
 
 **All 11 actionable bugs fixed.** ✅
 
