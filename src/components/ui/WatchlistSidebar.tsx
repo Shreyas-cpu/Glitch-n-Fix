@@ -1,6 +1,24 @@
+import { motion, AnimatePresence } from "motion/react";
+import { Trash2 } from "lucide-react";
+import { WatchlistItem } from "../../types/market";
 
+interface WatchlistSidebarProps {
+  items: WatchlistItem[];
+  onRemove: (id: string) => void;
+}
 
-e
+export const WatchlistSidebar = ({
+  items,
+  onRemove,
+}: WatchlistSidebarProps) => (
+  <div className="space-y-3">
+    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
+      Watchlist
+    </h3>
+    <AnimatePresence>
+      {items.map((item) => (
+        <motion.div
+          key={item.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

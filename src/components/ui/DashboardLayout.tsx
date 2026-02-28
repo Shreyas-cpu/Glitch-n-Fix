@@ -1,2 +1,2 @@
-I didn't erase any thing there was nothing here ,
-I promise
+// DashboardLayout — placeholder, layout is handled by Dashboard.tsx directly.
+export {};

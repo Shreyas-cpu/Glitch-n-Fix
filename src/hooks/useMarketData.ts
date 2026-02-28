@@ -1,14 +1,20 @@
-IF YOU WIN , YOU GOTTA TELL ME THE SECRET OF YOUR SUCCESS
-IF YOU LOSE , YOU GOTTA TELL ME THE REASON OF YOUR FAILURE
-IF YOU CHEAT , YOU GOTTA TELL ME THE WAY YOU CHEATED
-IF YOU ARE HONEST , YOU GOTTA TELL ME THE WAY YOU ARE HONEST
-.........AbortController..................AbortController.apply.call.bind.call...AbortController.apply.call......AbortController.apply.call.bind.call.bind.call.bind.call.bind.call.bind......AbortController.apply.call.bind.call.bind.call.bind.call.bind.call.bind.call.bind.call
-ANYWAYS, I AM GONNA PUT VIRUS IN THIS CODE
-HAHAHAHAHA
-OR MAYBE Not
-DEPENDS ON THE MOOD
-...AbortController...AbortController.apply.call.bind.call.bind.call.bind.call.bind...AbortController......AbortController......AbortController.apply...AbortController.apply......AbortController
-ARE THERE hINTS
-OR ARE THERE NOT
-BAD BOYS BAD BOYS WHAT YOU GONNA DO
-WHEN THEY COME FOR YOU
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import { Coin } from "../types/market";
+
+export function useMarketData() {
+  return useQuery<Coin[]>({
+    queryKey: ["marketData"],
+    queryFn: async () => {
+      try {
+        const res = await axios.get("/api/market");
+        return Array.isArray(res.data) ? res.data : [];
+      } catch (error) {
+        console.error("Failed to fetch market data:", error);
+        return [];
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5,
+  });
+}
