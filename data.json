@@ -1,9 +1,25 @@
 {
   "watchlist": [
-    { "id": "bitcoin", "symbol": "btc", "name": "Bitcoin" },
-    { "id": "ethereum", "symbol": "eth", "name": "Ethereum" },
-    { "id": "tether", "symbol": "usdt", "name": "Tether" },
-    { "id": "binancecoin", "symbol": "bnb", "name": "BNB" }
+    {
+      "id": "solana",
+      "symbol": "sol",
+      "name": "Solana"
+    },
+    {
+      "id": "tron",
+      "symbol": "trx",
+      "name": "TRON"
+    },
+    {
+      "id": "ethereum",
+      "symbol": "eth",
+      "name": "Ethereum"
+    },
+    {
+      "id": "bitcoin",
+      "symbol": "btc",
+      "name": "Bitcoin"
+    }
   ],
   "portfolio": []
 }

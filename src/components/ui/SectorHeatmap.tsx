@@ -27,7 +27,7 @@ export const SectorHeatmap = ({ sectors }: SectorHeatmapProps) => {
   ];
 
   return (
-    <div className="bg-[#151619] rounded-2xl border border-[#1A1B1E] overflow-hidden p-1.5 h-full min-h-[400px]">
+    <div className="bg-nexus-card rounded-2xl border border-nexus-border overflow-hidden p-1.5 h-full min-h-[400px]">
       <div className="grid grid-cols-12 auto-rows-fr gap-1.5 h-full w-full">
         {sectors.slice(0, 6).map((sector, index) => {
           const isPositive = sector.change >= 0;

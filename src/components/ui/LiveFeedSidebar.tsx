@@ -34,7 +34,7 @@ export const LiveFeedSidebar = ({ blocks }: LiveFeedSidebarProps) => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
-              className="p-4 bg-[#151619] rounded-xl border border-[#1A1B1E] hover:border-[#2A2B2E] transition-colors relative overflow-hidden group"
+              className="p-4 bg-nexus-card rounded-xl border border-nexus-border hover:border-nexus-border-hover transition-colors relative overflow-hidden group"
             >
               <div className="flex justify-between items-start relative z-10 mb-3">
                 <div className="flex items-center gap-3">
@@ -62,7 +62,7 @@ export const LiveFeedSidebar = ({ blocks }: LiveFeedSidebarProps) => {
                   <span className="font-medium text-white">{block.txns}</span>{" "}
                   txns
                 </div>
-                <div className="text-xs font-mono text-zinc-300 bg-[#1A1B1E] px-2 py-1 rounded border border-[#2A2B2E]">
+                <div className="text-xs font-mono text-zinc-300 bg-nexus-card-hover px-2 py-1 rounded border border-nexus-border-hover">
                   Reward:{" "}
                   <span className="text-emerald-400 font-bold">
                     {block.reward}

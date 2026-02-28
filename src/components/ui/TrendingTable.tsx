@@ -47,11 +47,11 @@ export const TrendingTable = ({ tokens }: TrendingTableProps) => {
                 key={token.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="hover:bg-[#151619] transition-colors group cursor-pointer"
+                className="hover:bg-nexus-card transition-colors group cursor-pointer"
               >
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#1A1B1E] border border-[#2A2B2E] flex items-center justify-center text-xs font-bold text-white">
+                    <div className="w-8 h-8 rounded-full bg-nexus-card-hover border border-nexus-border-hover flex items-center justify-center text-xs font-bold text-white">
                       {token.symbol.substring(0, 2)}
                     </div>
                     <div>
@@ -90,7 +90,7 @@ export const TrendingTable = ({ tokens }: TrendingTableProps) => {
                     <span className="text-zinc-300 font-mono text-sm w-8">
                       {token.sentiment}%
                     </span>
-                    <div className="w-24 h-1.5 bg-[#1A1B1E] rounded-full overflow-hidden border border-[#2A2B2E]">
+                    <div className="w-24 h-1.5 bg-nexus-card-hover rounded-full overflow-hidden border border-nexus-border-hover">
                       <div
                         className="h-full rounded-full transition-all duration-1000"
                         style={{

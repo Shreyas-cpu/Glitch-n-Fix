@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { StatCard } from "../ui/StatCard";
 import { Card } from "../ui/Card";
 import { TransactionTable, Transaction } from "../ui/TransactionTable";
 import { LiveFeedSidebar, BlockData } from "../ui/LiveFeedSidebar";
 import { Zap, Activity, ShieldCheck, Filter } from "lucide-react";
+import { Trade } from "../ui/TradePanel";
 
 // --- Mock Data ---
-const generateMockTransactions = (count: number): Transaction[] => {
+const MOCK_TRANSACTIONS: Transaction[] = (() => {
   const methods: Transaction["method"][] = [
     "Swap",
     "Send",
@@ -17,7 +18,7 @@ const generateMockTransactions = (count: number): Transaction[] => {
   const statuses: Transaction["status"][] = ["Success", "Pending", "Failed"];
   const coins = ["ETH", "USDC", "WBTC", "LINK", "UNI"];
 
-  return Array.from({ length: count }).map((_, i) => {
+  return Array.from({ length: 15 }).map((_, i) => {
     const method = methods[Math.floor(Math.random() * methods.length)];
     const status = statuses[Math.floor(Math.random() * statuses.length)];
     const coin = coins[Math.floor(Math.random() * coins.length)];
@@ -37,7 +38,7 @@ const generateMockTransactions = (count: number): Transaction[] => {
       usdValue: `$${(parseFloat(valueNum) * 2000).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
     };
   });
-};
+})();
 
 const MOCK_BLOCKS: BlockData[] = Array.from({ length: 8 }).map((_, i) => ({
   id: `block-${i}`,
@@ -50,18 +51,35 @@ const MOCK_BLOCKS: BlockData[] = Array.from({ length: 8 }).map((_, i) => ({
 
 const TIME_RANGES = ["1H", "24H", "7D", "30D"];
 
-export const ActivityView = () => {
+interface ActivityViewProps {
+  trades: Trade[];
+}
+
+export const ActivityView = ({ trades }: ActivityViewProps) => {
   const [filterMethod, setFilterMethod] = useState("All");
   const [timeRange, setTimeRange] = useState("24H");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  useEffect(() => {
-    setTransactions(generateMockTransactions(15));
-  }, []); // Empty deps — runs once on mount only
+  // Transform Trade[] into Transaction[] for the table
+  const transactions: Transaction[] = trades.map((t) => ({
+    id: t.id,
+    hash:
+      "0x" +
+      Math.random().toString(16).substring(2, 10) +
+      t.id.substring(t.id.length - 8),
+    method: t.type === "buy" ? "Swap" : "Swap", // Mapping Buy/Sell to Swap for TS compatibility
+    status: "Success",
+    time: "Just now",
+    value: `${t.amount} ${t.coinSymbol.toUpperCase()}`,
+    usdValue: `${t.totalCost.toFixed(4)} ETH`,
+  }));
 
-  const filteredTransactions = transactions.filter((tx) => {
-    if (filterMethod !== "All" && tx.method !== filterMethod) return false;
-    return true;
+  // Append mock transactions for visual filler
+  const allTransactions = [...transactions, ...MOCK_TRANSACTIONS];
+
+  const filteredTransactions = allTransactions.filter((tx) => {
+    if (filterMethod === "All") return true;
+    if (filterMethod === "Trade" && tx.method === "Swap") return true; // Show swaps as trades
+    return tx.method === filterMethod;
   });
 
   return (
@@ -100,24 +118,24 @@ export const ActivityView = () => {
               <div className="relative group flex items-center">
                 <Filter size={16} className="absolute left-3 text-zinc-500" />
                 <select
-                  className="bg-[#151619] border border-[#1A1B1E] text-sm text-white rounded-lg pl-9 pr-8 py-2 appearance-none focus:outline-none focus:border-emerald-500/50 cursor-pointer"
+                  className="bg-nexus-card border border-nexus-border text-sm text-white rounded-lg pl-9 pr-8 py-2 appearance-none focus:outline-none focus:border-emerald-500/50 cursor-pointer"
                   value={filterMethod}
                   onChange={(e) => setFilterMethod(e.target.value)}
                 >
                   <option value="All">All Types</option>
+                  <option value="Trade">Trades (Buy/Sell)</option>
                   <option value="Swap">Swaps</option>
-                  <option value="Send">Sends</option>
                   <option value="Mint">Mints</option>
                 </select>
               </div>
-              <div className="flex bg-[#151619] p-1 rounded-lg border border-[#1A1B1E]">
+              <div className="flex bg-nexus-card p-1 rounded-lg border border-nexus-border">
                 {TIME_RANGES.map((range) => (
                   <button
                     key={range}
                     onClick={() => setTimeRange(range)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                       timeRange === range
-                        ? "bg-[#1A1B1E] text-white shadow-sm border border-[#2A2B2E]"
+                        ? "bg-nexus-card-hover text-white shadow-sm border border-nexus-border-hover"
                         : "text-zinc-500 hover:text-white border border-transparent"
                     }`}
                   >

@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { GainersLosersGrid, GainerLoser } from "../ui/GainersLosersGrid";
 import { SectorHeatmap, Sector } from "../ui/SectorHeatmap";
 import { TrendingTable, TrendingToken } from "../ui/TrendingTable";
 import { Card } from "../ui/Card";
 import { Filter } from "lucide-react";
+import { useLiveCryptoPrices } from "../../hooks/useLiveCryptoPrices";
 
 // --- Mock Data ---
 const MOCK_GAINERS: GainerLoser[] = [
@@ -109,16 +110,46 @@ export const TrendingView = () => {
     "volChange",
   );
 
-  const sortedTokens = [...MOCK_TRENDING_TOKENS].sort((a, b) => {
-    return b[sortField] - a[sortField];
-  });
+  // Default symbols to watch
+  const symbolsToWatch = useMemo(() => {
+    const allMocks = [...MOCK_GAINERS, ...MOCK_LOSERS, ...MOCK_TRENDING_TOKENS];
+    return allMocks.map((token) => `${token.symbol}USDT`.toLowerCase());
+  }, []);
+
+  const livePrices = useLiveCryptoPrices(symbolsToWatch);
+
+  // Helper to map live prices to tokens
+  const applyLivePrice = <T extends { symbol: string; price: number }>(
+    token: T,
+  ): T => {
+    const symbolKey = `${token.symbol}USDT`.toUpperCase();
+    const livePrice = livePrices[symbolKey];
+    return {
+      ...token,
+      price: livePrice !== undefined ? livePrice : token.price,
+    };
+  };
+
+  const dynamicGainers = useMemo(
+    () => MOCK_GAINERS.map(applyLivePrice),
+    [MOCK_GAINERS, livePrices],
+  );
+  const dynamicLosers = useMemo(
+    () => MOCK_LOSERS.map(applyLivePrice),
+    [MOCK_LOSERS, livePrices],
+  );
+
+  const sortedTokens = useMemo(() => {
+    const tokensWithLivePrices = MOCK_TRENDING_TOKENS.map(applyLivePrice);
+    return tokensWithLivePrices.sort((a, b) => b[sortField] - a[sortField]);
+  }, [livePrices, sortField, MOCK_TRENDING_TOKENS]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto flex flex-col gap-8">
       {/* Top Section: Gainers/Losers & Heatmap */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-auto lg:h-[400px]">
         {/* Left: Gainers & Losers Grid */}
-        <GainersLosersGrid gainers={MOCK_GAINERS} losers={MOCK_LOSERS} />
+        <GainersLosersGrid gainers={dynamicGainers} losers={dynamicLosers} />
 
         {/* Right: Sector Heatmap */}
         <div className="flex flex-col h-full">
@@ -144,12 +175,12 @@ export const TrendingView = () => {
               Based on volume momentum and social sentiment
             </p>
           </div>
-          <div className="flex bg-[#151619] p-1 rounded-lg border border-[#1A1B1E]">
+          <div className="flex bg-nexus-card p-1 rounded-lg border border-nexus-border">
             <button
               onClick={() => setSortField("volChange")}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
                 sortField === "volChange"
-                  ? "bg-[#1A1B1E] text-white shadow-sm border border-[#2A2B2E]"
+                  ? "bg-nexus-card-hover text-white shadow-sm border border-nexus-border-hover"
                   : "text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent"
               }`}
             >
@@ -159,7 +190,7 @@ export const TrendingView = () => {
               onClick={() => setSortField("sentiment")}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
                 sortField === "sentiment"
-                  ? "bg-[#1A1B1E] text-white shadow-sm border border-[#2A2B2E]"
+                  ? "bg-nexus-card-hover text-white shadow-sm border border-nexus-border-hover"
                   : "text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent"
               }`}
             >

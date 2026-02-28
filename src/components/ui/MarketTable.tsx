@@ -6,6 +6,7 @@ import {
   ArrowDownRight,
   ChevronUp,
   ChevronDown,
+  ArrowDownUp,
 } from "lucide-react";
 import { Coin } from "../../types/market";
 
@@ -29,6 +30,7 @@ interface MarketTableProps {
   onSort: (field: SortField) => void;
   selectedCoinId: string | null;
   onRowClick: (coinId: string) => void;
+  onTradeClick?: (coinId: string) => void;
 }
 
 export const MarketTable = ({
@@ -39,6 +41,7 @@ export const MarketTable = ({
   onSort,
   selectedCoinId,
   onRowClick,
+  onTradeClick,
 }: MarketTableProps) => {
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortConfig.field !== field) return null;
@@ -53,32 +56,33 @@ export const MarketTable = ({
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="border-b border-[#141414]">
+          <tr className="border-b border-nexus-border bg-nexus-bg/50 text-left text-xs uppercase tracking-wider text-zinc-500">
+            <th className="px-6 py-4 font-medium">Asset</th>
             <th
-              className="px-6 py-4 text-xs text-zinc-500 uppercase cursor-pointer hover:text-zinc-300"
-              onClick={() => onSort("name")}
-            >
-              Asset <SortIcon field="name" />
-            </th>
-            <th
-              className="px-6 py-4 text-xs text-zinc-500 uppercase cursor-pointer hover:text-zinc-300"
+              className="px-6 py-4 font-medium cursor-pointer"
               onClick={() => onSort("current_price")}
             >
-              Price <SortIcon field="current_price" />
+              <div className="flex items-center gap-2">
+                Price <SortIcon field="current_price" />
+              </div>
             </th>
             <th
-              className="px-6 py-4 text-xs text-zinc-500 uppercase cursor-pointer hover:text-zinc-300"
+              className="px-6 py-4 font-medium cursor-pointer"
               onClick={() => onSort("price_change_percentage_24h")}
             >
-              24h <SortIcon field="price_change_percentage_24h" />
+              <div className="flex items-center gap-2">
+                24h Change <SortIcon field="price_change_percentage_24h" />
+              </div>
             </th>
             <th
-              className="px-6 py-4 text-xs text-zinc-500 uppercase cursor-pointer hover:text-zinc-300"
+              className="px-6 py-4 font-medium cursor-pointer"
               onClick={() => onSort("market_cap")}
             >
-              Market Cap <SortIcon field="market_cap" />
+              <div className="flex items-center gap-2">
+                Market Cap <SortIcon field="market_cap" />
+              </div>
             </th>
-            <th className="px-6 py-4 text-right"></th>
+            <th className="px-6 py-4 font-medium text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -88,7 +92,7 @@ export const MarketTable = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               onClick={() => onRowClick(coin.id)}
-              className={`cursor-pointer transition-colors ${selectedCoinId === coin.id ? "bg-[#141414]" : "hover:bg-[#151619]"}`}
+              className={`cursor-pointer transition-colors ${selectedCoinId === coin.id ? "bg-[#141414]" : "hover:bg-nexus-card"}`}
             >
               <td className="px-6 py-4 text-white flex items-center gap-3">
                 <span className="font-semibold">{coin.name}</span>
@@ -113,23 +117,41 @@ export const MarketTable = ({
                 ${(coin.market_cap / 1e9).toFixed(2)}B
               </td>
               <td className="px-6 py-4 text-right">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddToWatchlist(coin);
-                  }}
-                  disabled={watchlistIds.includes(coin.id)}
-                  className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  {watchlistIds.includes(coin.id) ? (
-                    <ShieldCheck size={18} className="text-emerald-500" />
-                  ) : (
-                    <Plus
-                      size={18}
-                      className="text-zinc-400 hover:text-white"
-                    />
+                <div className="flex items-center justify-end gap-2">
+                  {onTradeClick && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTradeClick(coin.id);
+                      }}
+                      className="px-3 py-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <ArrowDownUp size={14} /> Trade
+                    </button>
                   )}
-                </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToWatchlist(coin);
+                    }}
+                    disabled={watchlistIds.includes(coin.id)}
+                    className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                    title={
+                      watchlistIds.includes(coin.id)
+                        ? "In Watchlist"
+                        : "Add to Watchlist"
+                    }
+                  >
+                    {watchlistIds.includes(coin.id) ? (
+                      <ShieldCheck size={18} className="text-emerald-500" />
+                    ) : (
+                      <Plus
+                        size={18}
+                        className="text-zinc-400 hover:text-white"
+                      />
+                    )}
+                  </button>
+                </div>
               </td>
             </motion.tr>
           ))}

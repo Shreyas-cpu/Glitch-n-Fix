@@ -44,7 +44,7 @@ export const TransactionTable = ({ transactions }: TransactionTableProps) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="hover:bg-[#151619] transition-colors group cursor-pointer"
+                className="hover:bg-nexus-card transition-colors group cursor-pointer"
               >
                 <td className="px-6 py-4">
                   <span className="text-sm font-mono text-blue-400 hover:underline cursor-pointer">

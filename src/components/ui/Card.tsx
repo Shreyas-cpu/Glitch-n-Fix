@@ -13,7 +13,7 @@ export const Card = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "bg-[#151619] border border-[#141414] rounded-xl overflow-hidden",
+      "bg-nexus-card border border-[#141414] rounded-xl overflow-hidden",
       className,
     )}
     {...props}

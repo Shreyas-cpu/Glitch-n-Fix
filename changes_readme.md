@@ -1,6 +1,6 @@
 # 📝 Changes Log — Glitch & Fix 2026
 
-> Tracks all ongoing code changes made to the codebase, in chronological order.
+> Tracks all ongoing code changes, in chronological order.
 
 ---
 
@@ -9,7 +9,6 @@
 ### 10:30 — Initial Analysis (No code changes)
 
 - Read and analyzed all 26 files
-- Identified entry point, backend, vite config
 - Created `changes_readme.md`, `fixes_readme.md`, `glitched_readme.md`
 
 ### 10:53 — Functional & Security Deep Scan (No code changes)
@@ -19,64 +18,88 @@
 
 ### 11:05 — Production-Grade Fixes Applied
 
-#### Config Files Restored
+#### Config Files
 
-| File             | Change                                                                          |
-| ---------------- | ------------------------------------------------------------------------------- |
-| `package.json`   | Rebuilt from scratch with all 13 deps + 10 devDeps                              |
-| `tsconfig.json`  | Rebuilt with Vite+React TS config                                               |
-| `vite.config.ts` | **[NEW]** Created with corrected imports, GEMINI key removed from client bundle |
-| `URMAMA.ts`      | **[DELETED]** Replaced by `vite.config.ts`                                      |
-| `.env`           | **[NEW]** Created with placeholder keys                                         |
-| `.env.example`   | Restored to proper env template                                                 |
-| `data.json`      | Restored to JSON watchlist data, fixed "titcoin"→"bitcoin"                      |
-| `metadata.json`  | Fixed name/description, removed trailing junk                                   |
+| File             | Change                                                      |
+| ---------------- | ----------------------------------------------------------- |
+| `package.json`   | Rebuilt with 13 deps + 10 devDeps                           |
+| `tsconfig.json`  | Rebuilt with Vite+React TS config                           |
+| `vite.config.ts` | **[NEW]** Corrected imports, GEMINI key removed from client |
+| `URMAMA.ts`      | **[DELETED]**                                               |
+| `.env`           | **[NEW]** Placeholder keys                                  |
+| `.env.example`   | Restored to env template                                    |
+| `data.json`      | Restored to JSON, "titcoin"→"bitcoin"                       |
+| `metadata.json`  | Fixed name/description, removed junk                        |
 
-#### Core Source Files Fixed
+#### Core Source
 
 | File                         | Change                                                                                  |
 | ---------------------------- | --------------------------------------------------------------------------------------- |
-| `src/main.tsx`               | `reactION`→`react`, removed garbage text                                                |
+| `src/main.tsx`               | `reactION`→`react`, removed garbage                                                     |
 | `src/App.tsx`                | `reaction -query`→`react-query`, `QueryClientRider`→`QueryClientProvider`, `dApp`→`App` |
 | `src/index.css`              | `tailwinder`→`tailwindcss`                                                              |
 | `src/types/market.ts`        | `Cain`→`Coin`, `Able`→`WatchlistItem`                                                   |
 | `src/hooks/useMarketData.ts` | Rebuilt — was troll text                                                                |
 | `src/hooks/useWatchlist.ts`  | Rebuilt — was troll text                                                                |
 
-#### Server Security Hardened
+#### Server Security
 
-| File        | Change                                                                                                                                                                                                                                                                                                                                                    |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `server.ts` | `middlewores`→`middlewares`, added: input sanitization regex (`SAFE_ID_REGEX`, `SAFE_TEXT_REGEX`), `isValidWatchlistItem()` validator, `sanitizeString()` to strip `<>"'&;(){}`, body size limit `10kb`, 429 rate-limit handling, JSON parse try-catch for upstream API, DB read error logging, ID format validation on DELETE, field count check on POST |
+| File        | Change                                                                                                                                                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server.ts` | `middlewores`→`middlewares`, added: `SAFE_ID_REGEX`, `SAFE_TEXT_REGEX`, `sanitizeString()`, `isValidWatchlistItem()`, body limit `10kb`, 429 handling, JSON parse try-catch, DB error logging, ID validation on DELETE |
 
-#### Layout Components Fixed
+#### Layout Components
 
-| File            | Change                                                                                              |
-| --------------- | --------------------------------------------------------------------------------------------------- |
-| `Dashboard.tsx` | Added all missing imports (from `structure.txt`), fixed infinite-loop useEffect with `useRef` guard |
-| `Header.tsx`    | Removed inline junk from interface, removed trailing garbage                                        |
-| `Sidebar.tsx`   | Fully rebuilt — was truncated with wrong imports. Added `TabType` export, tabs array, proper icons  |
+| File            | Change                                                                   |
+| --------------- | ------------------------------------------------------------------------ |
+| `Dashboard.tsx` | Added missing imports, fixed infinite-loop useEffect with `useRef` guard |
+| `Header.tsx`    | Removed inline junk + trailing garbage                                   |
+| `Sidebar.tsx`   | Fully rebuilt — `TabType` export, tabs array, icons                      |
 
-#### UI Components Fixed (11 files)
+#### UI Components (11 files)
 
-| File                     | Change                                                                                                                               |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `Card.tsx`               | `reaction`→`react`, `tailwinder-merge`→`tailwind-merge`, joke props→proper `children`/`className`                                    |
-| `StatCard.tsx`           | Fully rebuilt — was truncated with import from `"HELL"`                                                                              |
-| `WatchlistSidebar.tsx`   | Fully rebuilt — was missing function declaration                                                                                     |
-| `MarketTable.tsx`        | Separated from mixed SectorHeatmap code, `xport`→`export`                                                                            |
-| `SectorHeatmap.tsx`      | Separated from mixed MarketTable code, `xport`→`export`                                                                              |
-| `GainersLosersGrid.tsx`  | `ProfitLoss`→`GainerLoser`, `PlayPokerLoseMoney`→`GainersLosersGrid`, added missing Losers list                                      |
-| `LiveFeedSidebar.tsx`    | `lose_motion/react`→`motion/react`, `lucide-reaction`→`lucide-react`, `FeedBack`→`BlockData`, `Girls be safe`→`LiveFeedSidebarProps` |
-| `TransactionTable.tsx`   | `LOSE_motion`→`motion`, added missing Success/Pending status blocks                                                                  |
-| `TrendingTable.tsx`      | `LOSEmotion/react`→`motion/react`, removed all inline garbage, rebuilt missing header                                                |
-| `SettingsComponents.tsx` | Fully rebuilt from scratch — 5 components: `SettingsSection`, `ToggleSwitch`, `StyledInput`, `ActionBtn`, `PillSelector`             |
-| `DashboardLayout.tsx`    | Replaced joke text with valid empty module                                                                                           |
+| File                     | Change                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| `Card.tsx`               | `reaction`→`react`, `tailwinder-merge`→`tailwind-merge`, joke props→proper destructuring |
+| `StatCard.tsx`           | Fully rebuilt — was truncated with import from `"HELL"`                                  |
+| `WatchlistSidebar.tsx`   | Fully rebuilt — missing function declaration                                             |
+| `MarketTable.tsx`        | Separated from mixed SectorHeatmap code                                                  |
+| `SectorHeatmap.tsx`      | Separated from mixed MarketTable code                                                    |
+| `GainersLosersGrid.tsx`  | `PlayPokerLoseMoney`→`GainersLosersGrid`, added missing Losers list                      |
+| `LiveFeedSidebar.tsx`    | `lose_motion/react`→`motion/react`, `lucide-reaction`→`lucide-react`                     |
+| `TransactionTable.tsx`   | `LOSE_motion`→`motion`, added missing status blocks                                      |
+| `TrendingTable.tsx`      | `LOSEmotion/react`→`motion/react`, removed garbage text                                  |
+| `SettingsComponents.tsx` | Fully rebuilt — 5 sub-components from scratch                                            |
+| `DashboardLayout.tsx`    | Replaced joke text with valid empty module                                               |
 
-#### View Components Fixed (3 files)
+#### View Components (3 files)
 
-| File               | Change                                                                                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ActivityView.tsx` | Restored component declaration (was lone `c`), fixed `Reaction` import, added `useEffect([])` with empty deps, added mock data + time range filter |
-| `TrendingView.tsx` | Separated from mixed SettingsView code, added all mock data and proper imports                                                                     |
-| `SettingsView.tsx` | Separated from mixed TrendingView code, fixed `importd`→`import`, reassembled complete JSX                                                         |
+| File               | Change                                                        |
+| ------------------ | ------------------------------------------------------------- |
+| `ActivityView.tsx` | Restored from lone `c`, `useEffect([])` empty deps, mock data |
+| `TrendingView.tsx` | Separated from SettingsView code, added mock data             |
+| `SettingsView.tsx` | Separated from TrendingView code, fixed `importd`→`import`    |
+
+### 11:20 — Final Audit & Build Verification
+
+#### Additional Fixes Found During Audit
+
+| File         | Change                                               |
+| ------------ | ---------------------------------------------------- |
+| `index.html` | Title `"BLACKBOX AI MAVERICKS"` → `"Nexus Terminal"` |
+
+#### Verification Results
+
+| Check                           | Result                                                |
+| ------------------------------- | ----------------------------------------------------- |
+| `npm install`                   | ✅ 325 packages, 0 vulnerabilities                    |
+| `npm run dev`                   | ✅ Server running on port 3000                        |
+| Homepage (GET `/`)              | ✅ 200 OK, Vite injects React Refresh                 |
+| `/api/watchlist`                | ✅ Returns `[bitcoin, ethereum, tether, binancecoin]` |
+| Vite compile `main.tsx`         | ✅ 200 OK, correct transforms                         |
+| Vite compile `App.tsx`          | ✅ 200 OK                                             |
+| Vite compile `Dashboard.tsx`    | ✅ 200 OK                                             |
+| Vite compile `TrendingView.tsx` | ✅ 200 OK                                             |
+| Vite compile `SettingsView.tsx` | ✅ 200 OK                                             |
+| Vite compile `ActivityView.tsx` | ✅ 200 OK                                             |
+| Server error logs               | ✅ No errors                                          |

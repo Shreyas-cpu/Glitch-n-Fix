@@ -28,7 +28,7 @@ const TokenList = ({
     <div className="flex items-center justify-between mb-6">
       <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
       <div
-        className={`px-2 py-1 rounded bg-[#1A1B1E] text-xs font-mono border border-[#2A2B2E] ${isGainer ? "text-emerald-500" : "text-red-500"}`}
+        className={`px-2 py-1 rounded bg-nexus-card-hover text-xs font-mono border border-nexus-border-hover ${isGainer ? "text-emerald-500" : "text-red-500"}`}
       >
         24h Top 5
       </div>
@@ -40,7 +40,7 @@ const TokenList = ({
           initial={{ opacity: 0, x: isGainer ? -10 : 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.05 }}
-          className="flex items-center justify-between py-2 border-b border-[#1A1B1E] last:border-0"
+          className="flex items-center justify-between py-2 border-b border-nexus-border last:border-0"
         >
           <div className="flex items-center gap-3">
             <span className="text-xs text-zinc-500 font-mono w-4">

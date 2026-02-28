@@ -11,8 +11,18 @@ import { WatchlistSidebar } from "../ui/WatchlistSidebar";
 import { ActivityView } from "../views/ActivityView";
 import { TrendingView } from "../views/TrendingView";
 import { SettingsView } from "../views/SettingsView";
+import { ProfileView } from "../views/ProfileView";
+import { AuthModal } from "../ui/AuthModal";
+import { WalletConnectModal } from "../ui/WalletConnectModal";
+import { TradePanel, Trade } from "../ui/TradePanel";
+import { RecentTrades } from "../ui/RecentTrades";
 
-import { TrendingUp, Activity, ShieldCheck } from "lucide-react";
+interface WalletInfo {
+  address: string;
+  balance: number;
+}
+
+import { TrendingUp, Activity, ShieldCheck, ArrowDownUp } from "lucide-react";
 
 import {
   ResponsiveContainer,
@@ -30,7 +40,61 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
 
   const [walletConnected, setWalletConnected] = useState(false);
+  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showTradePanel, setShowTradePanel] = useState(false);
+  const [trades, setTrades] = useState<Trade[]>([]);
+
+  // --- Settings State ---
+  const defaultSettings = {
+    slippage: "0.5%",
+    gasPriority: "Fast",
+    twoFactor: false,
+    timeout: "1h",
+    theme: "Dark",
+    desktopNotifs: true,
+  };
+  const [settings, setSettings] = useState(defaultSettings);
+
+  const handleLogin = (email: string) => {
+    setIsAuthenticated(true);
+    setUserEmail(email);
+    setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUserEmail("");
+    setWalletConnected(false);
+    setWalletInfo(null);
+  };
+
+  const handleWalletConnect = (address: string) => {
+    const simulatedBalance = parseFloat((Math.random() * 10 + 0.5).toFixed(4));
+    setWalletInfo({ address, balance: simulatedBalance });
+    setWalletConnected(true);
+    setShowWalletModal(false);
+  };
+
+  const handleWalletDisconnect = () => {
+    setWalletConnected(false);
+    setWalletInfo(null);
+  };
+
+  const handleTrade = (trade: Trade) => {
+    setTrades((prev) => [trade, ...prev]);
+    if (walletInfo) {
+      const newBalance =
+        trade.type === "buy"
+          ? walletInfo.balance - trade.totalCost
+          : walletInfo.balance + trade.totalCost;
+      setWalletInfo({ ...walletInfo, balance: Math.max(0, newBalance) });
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [selectedCoinId, setSelectedCoinId] = useState<string | null>(null);
@@ -120,13 +184,40 @@ export default function Dashboard() {
   const watchlistIds = watchlist.map((i: WatchlistItem) => i.id);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-zinc-300 font-sans">
+    <div className="min-h-screen bg-nexus-bg text-zinc-300 font-sans">
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLogin={handleLogin}
+      />
+
+      <WalletConnectModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        onConnect={handleWalletConnect}
+      />
+
+      <TradePanel
+        coins={coins}
+        walletBalance={walletInfo?.balance ?? 0}
+        onTrade={handleTrade}
+        isOpen={showTradePanel}
+        onClose={() => setShowTradePanel(false)}
+        preselectedCoinId={selectedCoinId}
+      />
+
       <Sidebar activeTab={activeTab} onChangeTab={setActiveTab} />
 
       <main className="pl-64">
         <Header
           walletConnected={walletConnected}
-          setWalletConnected={setWalletConnected}
+          walletInfo={walletInfo}
+          isAuthenticated={isAuthenticated}
+          userEmail={userEmail}
+          onConnectWallet={() => setShowWalletModal(true)}
+          onDisconnectWallet={handleWalletDisconnect}
+          onLoginClick={() => setShowAuthModal(true)}
+          onLogout={handleLogout}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
         />
@@ -160,10 +251,10 @@ export default function Dashboard() {
               <Card>
                 <div className="w-full p-6">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-[#151619] border border-[#141414] flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 rounded-full bg-nexus-card border border-[#141414] flex items-center justify-center text-white font-bold">
                       {selectedCoinData?.symbol
                         ?.substring(0, 2)
-                        .toUpperCase() || "$"}
+                        ?.toUpperCase() || "$"}
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">
@@ -290,30 +381,60 @@ export default function Dashboard() {
                   onSort={handleSort}
                   selectedCoinId={selectedCoinId}
                   onRowClick={setSelectedCoinId}
+                  onTradeClick={(coinId) => {
+                    setSelectedCoinId(coinId);
+                    setShowTradePanel(true);
+                  }}
                 />
               </Card>
             </div>
 
-            {/* Watchlist */}
-            <div className="col-span-12 lg:col-span-4 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2 custom-scrollbar">
+            {/* Right Sidebar: Trade + Watchlist + Recent Trades */}
+            <div className="col-span-12 lg:col-span-4 space-y-6 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2 custom-scrollbar">
+              {/* Trade Button */}
+              {walletConnected && (
+                <button
+                  onClick={() => setShowTradePanel(true)}
+                  className="w-full py-3 rounded-xl font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-400 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                >
+                  <ArrowDownUp size={18} /> Open Trade Panel
+                </button>
+              )}
+
               <WatchlistSidebar
                 items={watchlist}
                 onRemove={(id) => removeFromWatchlist.mutate(id)}
               />
+
+              <RecentTrades trades={trades} />
             </div>
           </div>
         ) : activeTab === "activity" ? (
-          <ActivityView />
+          <ActivityView trades={trades} />
         ) : activeTab === "trending" ? (
           <TrendingView />
+        ) : activeTab === "profile" ? (
+          <ProfileView
+            isAuthenticated={isAuthenticated}
+            userEmail={userEmail}
+            walletConnected={walletConnected}
+            walletInfo={walletInfo}
+            trades={trades}
+          />
         ) : activeTab === "settings" ? (
-          <SettingsView />
+          <SettingsView
+            settings={settings}
+            onUpdateSettings={setSettings}
+            defaultSettings={defaultSettings}
+            walletAddress={walletInfo?.address}
+            onDisconnectWallet={handleWalletDisconnect}
+          />
         ) : (
           <div className="p-8 max-w-7xl mx-auto h-[80vh] flex flex-col items-center justify-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="w-20 h-20 rounded-full bg-[#151619] border border-[#141414] flex items-center justify-center mb-6"
+              className="w-20 h-20 rounded-full bg-nexus-card border border-[#141414] flex items-center justify-center mb-6"
             >
               {activeTab === "activity" && (
                 <Activity size={32} className="text-emerald-500" />

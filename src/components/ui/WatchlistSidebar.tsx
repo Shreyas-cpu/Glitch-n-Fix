@@ -22,7 +22,7 @@ export const WatchlistSidebar = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="flex justify-between p-3 bg-[#151619] rounded-lg"
+          className="flex justify-between p-3 bg-nexus-card rounded-lg"
         >
           <span>{item.name}</span>
           <button onClick={() => onRemove(item.id)}>
