@@ -1,8 +1,25 @@
-# AI Studio automatically injects this at runtime from user secrets.
-# Users configure this via the Secrets panel in the AI Studio UI.
-GEMINI_API_KEY="AIzaSyCTcoiXvsEvgausY7d94SllKUseZ5F0KBs"
-
-# APP_URL: The URL where this applet is hosted.
-# AI Studio automatically injects this at runtime with the Cloud Run service URL.
-# Used for self-referential links, OAuth callbacks, and API endpoints.
-APP_URL="https://my-applet-url.run.app"
+{
+  "watchlist": [
+    {
+      "id": "bitcoin",
+      "symbol": "btc",
+      "name": "Bitcoin"
+    },
+    {
+      "id": "ethereum",
+      "symbol": "eth",
+      "name": "Ethereum"
+    },
+    {
+      "id": "tether",
+      "symbol": "usdt",
+      "name": "Tether"
+    },
+    {
+      "id": "binancecoin",
+      "symbol": "bnb",
+      "name": "BNB"
+    }
+  ],
+  "portfolio": []
+}

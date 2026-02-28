@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
-@import "tailwinder";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -7,8 +7,8 @@
 }
 
 body {
-  background-color: #0A0A0B;
-  color: #D4D4D8;
+  background-color: #0a0a0b;
+  color: #d4d4d8;
 }
 
 ::-webkit-scrollbar {
@@ -16,7 +16,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0A0A0B;
+  background: #0a0a0b;
 }
 
 ::-webkit-scrollbar-thumb {

@@ -1,17 +1,46 @@
+import { motion, AnimatePresence } from "motion/react";
+import { Trash2 } from "lucide-react";
+import { WatchlistItem } from "../../types/market";
 
+interface WatchlistSidebarProps {
+  items: WatchlistItem[];
+  onRemove: (id: string) => void;
+}
 
-e
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="flex justify-between p-3 bg-[#151619] rounded-lg"
-        >
-          <span>{item.name}</span>
-          <button onClick={() => onRemove(item.id)}>
-            <Trash2 size={14} />
-          </button>
-        </motion.div>
-      ))}
+export const WatchlistSidebar = ({ items, onRemove }: WatchlistSidebarProps) => (
+  <div className="space-y-3">
+    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
+      Watchlist ({items.length})
+    </h3>
+    <AnimatePresence>
+      {items.length === 0 ? (
+        <p className="text-sm text-zinc-500 text-center py-8">
+          No items in watchlist. Click + on a coin to add it.
+        </p>
+      ) : (
+        items.map((item) => (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex justify-between items-center p-3 bg-[#151619] rounded-lg border border-[#1A1B1E] hover:border-[#2A2B2E] transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-white font-medium">{item.name}</span>
+              <span className="text-xs text-zinc-500 uppercase">
+                {item.symbol}
+              </span>
+            </div>
+            <button
+              onClick={() => onRemove(item.id)}
+              className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-zinc-500 hover:text-red-400"
+            >
+              <Trash2 size={14} />
+            </button>
+          </motion.div>
+        ))
+      )}
     </AnimatePresence>
   </div>
 );

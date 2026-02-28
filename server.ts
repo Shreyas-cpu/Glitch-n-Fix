@@ -4,24 +4,21 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-let marketCache: any = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 60 * 1000; // 1 minute
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, "data.json");
 
+let marketCache: any = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 60 * 1000;
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
-
-  // --------------------------
-  // DATABASE HELPERS
-  // --------------------------
 
   const readDB = async () => {
     try {
@@ -36,12 +33,9 @@ async function startServer() {
     await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2));
   };
 
-  // --------------------------
-  // MARKET PROXY (FIXES CORS)
-  // --------------------------
-
-  app.get("/api/market", async (req, res) => {
-    const now =  Date.now();
+  // Market Data (CoinGecko proxy with cache)
+  app.get("/api/market", async (_req, res) => {
+    const now = Date.now();
 
     if (marketCache && now - lastFetchTime < CACHE_DURATION) {
       return res.json(marketCache);
@@ -53,9 +47,9 @@ async function startServer() {
       );
 
       if (!response.ok) {
-        return res.status(response.status).json({
-          error: "CoinGecko API failed",
-        });
+        return res
+          .status(response.status)
+          .json({ error: "CoinGecko API failed" });
       }
 
       const data = await response.json();
@@ -68,26 +62,38 @@ async function startServer() {
     }
   });
 
-  // --------------------------
-  // WATCHLIST ROUTES
-  // --------------------------
-
-  app.get("/api/watchlist", async (req, res) => {
+  // Watchlist CRUD
+  app.get("/api/watchlist", async (_req, res) => {
     const db = await readDB();
-    res.json(db.watchlist);
+    res.json(db.watchlist || []);
   });
 
   app.post("/api/watchlist", async (req, res) => {
     const { item } = req.body;
 
-    if (!item || !item.id || !item.name || !item.symbol) {
+    if (
+      !item ||
+      typeof item.id !== "string" ||
+      typeof item.name !== "string" ||
+      typeof item.symbol !== "string" ||
+      !item.id.trim() ||
+      !item.name.trim() ||
+      !item.symbol.trim()
+    ) {
       return res.status(400).json({ error: "Invalid watchlist item" });
     }
 
-    const db = await readDB();
+    const sanitizedItem = {
+      id: item.id.trim().toLowerCase(),
+      name: item.name.trim().substring(0, 100),
+      symbol: item.symbol.trim().substring(0, 20).toLowerCase(),
+    };
 
-    if (!db.watchlist.find((i: any) => i.id === item.id)) {
-      db.watchlist.push(item);
+    const db = await readDB();
+    if (!db.watchlist) db.watchlist = [];
+
+    if (!db.watchlist.find((i: any) => i.id === sanitizedItem.id)) {
+      db.watchlist.push(sanitizedItem);
       await writeDB(db);
     }
 
@@ -96,28 +102,30 @@ async function startServer() {
 
   app.delete("/api/watchlist/:id", async (req, res) => {
     const { id } = req.params;
-    const db = await readDB();
 
+    if (!id || typeof id !== "string") {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+
+    const db = await readDB();
+    if (!db.watchlist) db.watchlist = [];
     db.watchlist = db.watchlist.filter((i: any) => i.id !== id);
     await writeDB(db);
 
     res.json(db.watchlist);
   });
 
-  // --------------------------
-  // DEV / PROD HANDLING
-  // --------------------------
-
+  // Vite dev middleware or static serve
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
 
-    app.use(vite.middlewores);
+    app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
-    app.get("*", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(__dirname, "dist", "index.html"));
     });
   }

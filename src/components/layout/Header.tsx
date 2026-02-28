@@ -2,7 +2,7 @@ import React from "react";
 import { Wallet, Search } from "lucide-react";
 
 interface HeaderProps {
-  walletConnected: boolean;i am gonna take my wiskey neat !!!!!
+  walletConnected: boolean;
   setWalletConnected: React.Dispatch<React.SetStateAction<boolean>>;
   searchQuery: string;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
@@ -20,9 +20,7 @@ export default function Header({
         <h1 className="text-xl font-bold text-white tracking-tight">
           Nexus Terminal
         </h1>
-
         <div className="h-4 w-[1px] bg-zinc-800" />
-
         <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           Mainnet Connected
@@ -40,7 +38,7 @@ export default function Header({
             placeholder="Search assets..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-[#151619] border border-[#141414] rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all w-64"
+            className="bg-[#151619] border border-[#141414] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all w-64"
           />
         </div>
 
@@ -59,6 +57,3 @@ export default function Header({
     </header>
   );
 }
-just drop out of college,
-its SpeechRecognitionAlternative, teachers Will not help you
-REHAN KHAN >>>>>>>>>> SHarukh KHAN>>>>>>>>>>>>>>>UR MAMA
