@@ -11,7 +11,7 @@ import { WatchlistSidebar } from "../ui/WatchlistSidebar";
 import { ActivityView } from "../views/ActivityView";
 import { TrendingView } from "../views/TrendingView";
 import { SettingsView } from "../views/SettingsView";
-import { TrendingUp, Activity, ShieldCheck, Wallet, Search } from "lucide-react";
+import { TrendingUp, Activity, ShieldCheck } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import { Coin, WatchlistItem } from "../../types/market";
@@ -79,7 +79,7 @@ export default function Dashboard() {
         c.symbol.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    return filtered.sort((a, b) => {
+    return filtered.sort((a: Coin, b: Coin) => {
       const field = sortConfig.field;
       const valA = a[field] as string | number;
       const valB = b[field] as string | number;
@@ -177,10 +177,7 @@ export default function Dashboard() {
                         />
 
                         <XAxis dataKey="time" hide />
-                        <YAxis
-                          hide
-                          domain={["auto", "auto"]}
-                        />
+                        <YAxis hide domain={["auto", "auto"]} />
 
                         <Tooltip
                           contentStyle={{
@@ -228,12 +225,16 @@ export default function Dashboard() {
               />
             </div>
           </div>
+
         ) : activeTab === "activity" ? (
           <ActivityView />
+
         ) : activeTab === "trending" ? (
           <TrendingView />
+
         ) : activeTab === "settings" ? (
           <SettingsView />
+
         ) : (
           <div className="p-8 max-w-7xl mx-auto h-[80vh] flex flex-col items-center justify-center">
             <motion.div
@@ -241,11 +242,9 @@ export default function Dashboard() {
               animate={{ opacity: 1, scale: 1 }}
               className="w-20 h-20 rounded-full bg-[#151619] border border-[#141414] flex items-center justify-center mb-6"
             >
-              {activeTab === "activity" && <Activity size={32} className="text-emerald-500" />}
-              {activeTab === "trending" && <TrendingUp size={32} className="text-emerald-500" />}
-              {activeTab === "settings" && <ShieldCheck size={32} className="text-emerald-500" />}
+              <ShieldCheck size={32} className="text-emerald-500" />
             </motion.div>
-            <h2 className="text-4xl font-black text-white mb-4 uppercase tracking-widest">{activeTab} View</h2>
+            <h2 className="text-4xl font-black text-white mb-4 uppercase tracking-widest">Unknown Tab</h2>
             <p className="text-zinc-500 text-lg">This module is currently disabled or under development.</p>
             <button
               onClick={() => setActiveTab("dashboard")}
