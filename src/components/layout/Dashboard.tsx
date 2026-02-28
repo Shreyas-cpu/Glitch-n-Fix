@@ -1,3 +1,20 @@
+import React, { useState, useMemo, useEffect } from "react";
+import axios from "axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import Sidebar, { TabType } from "./Sidebar";
+import Header from "./Header";
+import { StatCard } from "../ui/StatCard";
+import { Card } from "../ui/Card";
+import { MarketTable, SortConfig, SortField } from "../ui/MarketTable";
+import { WatchlistSidebar } from "../ui/WatchlistSidebar";
+import { ActivityView } from "../views/ActivityView";
+import { TrendingView } from "../views/TrendingView";
+import { SettingsView } from "../views/SettingsView";
+import { TrendingUp, Activity, ShieldCheck, Wallet, Search } from "lucide-react";
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
+import { motion } from "framer-motion";
+import { Coin, WatchlistItem } from "../../types/market";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();

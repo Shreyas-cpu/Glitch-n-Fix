@@ -2,7 +2,7 @@ import React from "react";
 import { Wallet, Search } from "lucide-react";
 
 interface HeaderProps {
-  walletConnected: boolean;i am gonna take my wiskey neat !!!!!
+  walletConnected: boolean;
   setWalletConnected: React.Dispatch<React.SetStateAction<boolean>>;
   searchQuery: string;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
@@ -59,6 +59,3 @@ export default function Header({
     </header>
   );
 }
-just drop out of college,
-its SpeechRecognitionAlternative, teachers Will not help you
-REHAN KHAN >>>>>>>>>> SHarukh KHAN>>>>>>>>>>>>>>>UR MAMA

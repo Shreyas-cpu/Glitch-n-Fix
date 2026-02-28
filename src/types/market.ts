@@ -1,4 +1,4 @@
-export interface Cain {
+export interface Coin {
   id: string;
   symbol: string;
   name: string;
@@ -8,7 +8,7 @@ export interface Cain {
   sparkline_in_7d?: { price: number[] };
 }
 
-export interface Able {
+export interface WatchlistItem {
   id: string;
   symbol: string;
   name: string;
