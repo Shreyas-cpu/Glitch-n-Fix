@@ -27,6 +27,7 @@ import {
 import { Coin, WatchlistItem } from "../../types/market";
 import { useMarketData } from "../../hooks/useMarketData";
 import { usePortfolio } from "../../hooks/usePortfolio";
+import { useToast } from "../../hooks/useToast";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -46,6 +47,7 @@ export default function Dashboard() {
 
   // Portfolio for SL/TP monitoring
   const { portfolio, checkSLTP } = usePortfolio();
+  const { toast } = useToast();
 
   // SL/TP monitoring: check triggers every 30s when there are holdings with SL/TP
   const sltpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -55,10 +57,20 @@ export default function Dashboard() {
     const hasAny = portfolio.some((h) => h.stopLoss || h.takeProfit);
     if (!hasAny || coins.length === 0) return;
 
-    const runCheck = () => {
+    const runCheck = async () => {
       const prices: Record<string, number> = {};
       for (const coin of coins) prices[coin.id] = coin.current_price;
-      checkSLTP(prices);
+      const result = await checkSLTP(prices);
+      if (result.triggered?.length > 0) {
+        for (const t of result.triggered) {
+          const label = t.trigger === "stop-loss" ? "Stop Loss" : "Take Profit";
+          toast(
+            t.trigger === "stop-loss" ? "warning" : "success",
+            `${label} Triggered`,
+            `Auto-sold ${t.amount} ${t.coinId.toUpperCase()} at $${t.pricePerUnit.toLocaleString()}`,
+          );
+        }
+      }
     };
 
     // Check immediately on new data

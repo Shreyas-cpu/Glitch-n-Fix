@@ -4,15 +4,24 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import * as delta from "./src/lib/deltaClient.js";
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, "data.json");
 
+// ── Caches ──────────────────────────────────────────────────────────
 let marketCache: any = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 60 * 1000;
+
+let deltaTickerCache: any[] | null = null;
+let deltaTickerCacheTime = 0;
+const DELTA_CACHE_DURATION = 30 * 1000; // 30s for Delta tickers
+
+let deltaProductCache: any[] | null = null;
+let deltaProductCacheTime = 0;
 
 async function startServer() {
   const app = express();
@@ -43,7 +52,7 @@ async function startServer() {
 
     try {
       const response = await fetch(
-        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=true"
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=true"
       );
 
       if (!response.ok) {
@@ -350,6 +359,186 @@ async function startServer() {
     }
 
     res.json({ triggered, portfolio: db.portfolio });
+  });
+
+  // ── Delta Exchange API Proxy ──────────────────────────────────────
+
+  // Status check — is Delta API configured?
+  app.get("/api/delta/status", (_req, res) => {
+    res.json({
+      configured: delta.isDeltaConfigured(),
+      baseUrl: process.env.DELTA_API_BASE_URL || "https://api.delta.exchange",
+    });
+  });
+
+  // Delta tickers — live market data (cached 30s)
+  app.get("/api/delta/tickers", async (_req, res) => {
+    const now = Date.now();
+    if (deltaTickerCache && now - deltaTickerCacheTime < DELTA_CACHE_DURATION) {
+      return res.json(deltaTickerCache);
+    }
+    try {
+      const tickers = await delta.getTickers();
+      deltaTickerCache = tickers;
+      deltaTickerCacheTime = now;
+      res.json(tickers);
+    } catch (err: any) {
+      console.error("Delta tickers error:", err.message);
+      // Return cached data if available, else empty
+      res.json(deltaTickerCache || []);
+    }
+  });
+
+  // Single ticker
+  app.get("/api/delta/ticker/:symbol", async (req, res) => {
+    try {
+      const ticker = await delta.getTicker(req.params.symbol);
+      if (!ticker) return res.status(404).json({ error: "Ticker not found" });
+      res.json(ticker);
+    } catch (err: any) {
+      res.status(err.status || 500).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Delta products (trading pairs)
+  app.get("/api/delta/products", async (_req, res) => {
+    const now = Date.now();
+    if (deltaProductCache && now - deltaProductCacheTime < CACHE_DURATION) {
+      return res.json(deltaProductCache);
+    }
+    try {
+      const products = await delta.getProducts();
+      deltaProductCache = products;
+      deltaProductCacheTime = now;
+      res.json(products);
+    } catch (err: any) {
+      console.error("Delta products error:", err.message);
+      res.json(deltaProductCache || []);
+    }
+  });
+
+  // Historical candles for charts
+  app.get("/api/delta/candles/:symbol", async (req, res) => {
+    const { symbol } = req.params;
+    const resolution = (req.query.resolution as string) || "1h";
+    const start = req.query.start ? Number(req.query.start) : undefined;
+    const end = req.query.end ? Number(req.query.end) : undefined;
+    try {
+      const candles = await delta.getHistoricalPrices(symbol, resolution, start, end);
+      res.json(candles);
+    } catch (err: any) {
+      res.status(err.status || 500).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Order book
+  app.get("/api/delta/orderbook/:productId", async (req, res) => {
+    const productId = Number(req.params.productId);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: "Invalid product ID" });
+    }
+    try {
+      const book = await delta.getOrderBook(productId);
+      res.json(book);
+    } catch (err: any) {
+      res.status(err.status || 500).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Place order (authenticated)
+  app.post("/api/delta/orders", async (req, res) => {
+    const { product_id, side, size, order_type, limit_price, stop_price, stop_order_type } = req.body;
+
+    // Validate required fields
+    if (!product_id || typeof product_id !== "number") {
+      return res.status(400).json({ error: "Invalid product_id" });
+    }
+    if (!["buy", "sell"].includes(side)) {
+      return res.status(400).json({ error: "Side must be 'buy' or 'sell'" });
+    }
+    if (typeof size !== "number" || !Number.isFinite(size) || size <= 0) {
+      return res.status(400).json({ error: "Invalid size" });
+    }
+    if (!["limit_order", "market_order"].includes(order_type)) {
+      return res.status(400).json({ error: "Invalid order_type" });
+    }
+
+    try {
+      const order = await delta.placeOrder({
+        product_id,
+        side,
+        size,
+        order_type,
+        limit_price,
+        stop_price,
+        stop_order_type,
+      });
+      res.json(order);
+    } catch (err: any) {
+      const status = err.status && err.status > 0 ? err.status : 500;
+      res.status(status).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Get positions (authenticated)
+  app.get("/api/delta/positions", async (_req, res) => {
+    try {
+      const positions = await delta.getPositions();
+      res.json(positions);
+    } catch (err: any) {
+      const status = err.status && err.status > 0 ? err.status : 500;
+      res.status(status).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Get open orders (authenticated)
+  app.get("/api/delta/orders", async (req, res) => {
+    const productId = req.query.product_id ? Number(req.query.product_id) : undefined;
+    try {
+      const orders = await delta.getOpenOrders(productId);
+      res.json(orders);
+    } catch (err: any) {
+      const status = err.status && err.status > 0 ? err.status : 500;
+      res.status(status).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Get trade history / fills (authenticated)
+  app.get("/api/delta/fills", async (req, res) => {
+    const productId = req.query.product_id ? Number(req.query.product_id) : undefined;
+    try {
+      const fills = await delta.getTradeHistory(productId);
+      res.json(fills);
+    } catch (err: any) {
+      const status = err.status && err.status > 0 ? err.status : 500;
+      res.status(status).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Cancel order (authenticated)
+  app.delete("/api/delta/orders", async (req, res) => {
+    const { id, product_id } = req.body;
+    if (!id || !product_id) {
+      return res.status(400).json({ error: "id and product_id required" });
+    }
+    try {
+      await delta.cancelOrder(id, product_id);
+      res.json({ success: true });
+    } catch (err: any) {
+      const status = err.status && err.status > 0 ? err.status : 500;
+      res.status(status).json({ error: err.message, kind: err.kind });
+    }
+  });
+
+  // Delta wallet / balances (authenticated)
+  app.get("/api/delta/wallet", async (_req, res) => {
+    try {
+      const wallet = await delta.getPortfolio();
+      res.json(wallet);
+    } catch (err: any) {
+      const status = err.status && err.status > 0 ? err.status : 500;
+      res.status(status).json({ error: err.message, kind: err.kind });
+    }
   });
 
   // ── Vite dev middleware or static serve ──

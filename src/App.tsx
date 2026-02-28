@@ -1,6 +1,7 @@
 // filepath: src/App.tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./hooks/useTheme";
+import { ToastProvider } from "./hooks/useToast";
 import Dashboard from "./components/layout/Dashboard";
 
 const queryClient = new QueryClient({
@@ -17,7 +18,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <Dashboard />
+        <ToastProvider>
+          <Dashboard />
+        </ToastProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

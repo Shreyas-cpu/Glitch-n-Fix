@@ -1,6 +1,6 @@
 # Nexus Terminal — Crypto Market Dashboard
 
-A real-time cryptocurrency market dashboard built with **React 18**, **TypeScript**, **Vite**, **Express**, and **TanStack React Query**. Features live CoinGecko data, a full **buy/sell trading** system with **Stop Loss / Take Profit**, portfolio management, watchlist CRUD, trending assets view, sector heatmap, activity feed, dark/light theme, and settings panel.
+A real-time cryptocurrency market dashboard built with **React 18**, **TypeScript**, **Vite**, **Express**, and **TanStack React Query**. Features live CoinGecko data, **Delta Exchange API** integration for professional-grade trading data, a full **buy/sell trading** system with **Stop Loss / Take Profit**, two-step trade confirmations, toast notifications, portfolio management, watchlist CRUD, trending assets view, sector heatmap, activity feed, dark/light theme, and settings panel.
 
 Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 
@@ -11,8 +11,11 @@ Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 | Feature | Description |
 |---------|-------------|
 | **Dashboard** | Live market data (30s polling) with price charts, computed stats, sortable table, and coin selection |
+| **Delta Exchange API** | Professional-grade trading data via HMAC-SHA256 authenticated REST API — tickers, candles, orderbook, wallet |
 | **Buy / Sell Trading** | Full end-to-end trading — click "Trade" on any coin, enter amount, execute buy or sell at live price |
-| **Stop Loss / Take Profit** | Set SL/TP on any buy — auto-sells when price hits your target. Visible in portfolio and trade modal |
+| **Trade Confirmations** | Two-step confirmation to prevent accidental trades — click Trade → review details → confirm to execute |
+| **Toast Notifications** | Real-time feedback for trades, errors, and SL/TP triggers — animated, color-coded, auto-dismissing |
+| **Stop Loss / Take Profit** | Set SL/TP on any buy — auto-sells when price hits your target, with toast notifications |
 | **Portfolio** | Tracks holdings with live P&L, avg cost basis, current value, SL/TP levels, and 24h change |
 | **Watchlist** | Add/remove coins; click a watchlist item to view its chart |
 | **Transaction History** | Complete log of all buy/sell trades with full timestamps, trigger type (manual/SL/TP), and P&L |
@@ -20,6 +23,7 @@ Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 | **Activity** | Real order history with buy/sell filters and time-range filtering |
 | **Settings** | Dark / Light / System theme toggle, wallet config, slippage, gas priority |
 | **Real-Time** | 30-second data refresh, SL/TP monitoring loop, refetch on window focus |
+| **Error Handling** | Classified error types (auth/rate-limit/network/server/unknown) with user-friendly messages |
 
 ### How Buy/Sell Works
 
@@ -28,8 +32,11 @@ Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 3. Enter the amount — the total cost/revenue is calculated at the current live price
 4. For sells, a "Max" button lets you sell your entire holding
 5. **Optionally** expand the "Set Stop Loss / Take Profit" section (buy mode) to configure automatic triggers
-6. The server validates all inputs, updates the portfolio, records the transaction, and calculates P&L
-7. The **Portfolio** tab shows holdings enriched with live prices, SL/TP levels, and real-time profit/loss
+6. Click the Buy/Sell button → a **confirmation banner** appears showing the trade summary
+7. Click **Confirm** to execute, or **Cancel** to go back — prevents accidental trades
+8. A **toast notification** appears confirming the trade was executed (or showing the error)
+9. The server validates all inputs, updates the portfolio, records the transaction, and calculates P&L
+10. The **Portfolio** tab shows holdings enriched with live prices, SL/TP levels, and real-time profit/loss
 
 ### How Stop Loss / Take Profit Works
 
@@ -39,6 +46,44 @@ Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 4. The Dashboard runs a background monitoring loop every 30 seconds
 5. If the market price hits your SL or TP, the position is automatically sold
 6. Triggered trades appear in Activity with a **SL** or **TP** badge
+
+### Delta Exchange Integration
+
+The app integrates with the **Delta Exchange API** for professional-grade trading data:
+
+- **Tickers**: Real-time price tickers for all Delta Exchange products (30s cache)
+- **Candles**: Historical OHLCV data for price charts with configurable resolution
+- **Order Book**: Live order book depth for any product
+- **Products**: Full product catalog with 60s cache
+- **Wallet**: Account balance and margin information
+- **Positions**: Open positions tracking
+- **Orders**: Place and cancel orders, view open orders
+- **Trade History**: Full fill history
+
+Authentication uses **HMAC-SHA256 signing** — the server proxies all Delta requests so API keys are never exposed to the browser.
+
+### Trade Confirmation & Notifications
+
+- **Two-Step Confirmation**: Clicking Buy/Sell shows a yellow confirmation banner with trade details. Must click Confirm to execute.
+- **Toast Notifications**: Animated notifications appear top-right for:
+  - ✅ Successful trades (green)
+  - ❌ Failed trades with error details (red)
+  - ⚠️ Stop Loss triggered (yellow)
+  - ✅ Take Profit triggered (green)
+- Toasts auto-dismiss after 5 seconds, max 5 visible at once
+
+### Error Handling
+
+Errors are classified into categories for appropriate user feedback:
+
+| Kind | Description |
+|------|-------------|
+| `auth` | Invalid API key or signature (HTTP 401/403) |
+| `rate-limit` | Too many requests (HTTP 429) |
+| `not-found` | Resource not found (HTTP 404) |
+| `network` | Connection failure or timeout |
+| `server` | Server error (HTTP 5xx) |
+| `unknown` | Unclassified error |
 
 ### Interactive Features
 
@@ -65,8 +110,10 @@ Built for **Glitch & Fix 2026 Hackathon** — Web3 / Blockchain Track.
 2. Select **Buy** or **Sell** tab
 3. Enter the amount you want to trade
 4. (Optional) Expand **Stop Loss / Take Profit** to set automatic triggers
-5. Click **Confirm Buy** or **Confirm Sell**
-6. Check **Portfolio** tab to see your holdings and P&L
+5. Click **Buy** or **Sell** — a confirmation banner appears
+6. Review the trade details, then click **Confirm** (or **Cancel** to go back)
+7. A toast notification confirms the trade
+8. Check **Portfolio** tab to see your holdings and P&L
 
 ### Watchlist
 
@@ -108,6 +155,17 @@ npm install
 ```bash
 cp .env.example .env
 ```
+
+Edit `.env` and add your **Delta Exchange API** credentials:
+
+```env
+DELTA_API_KEY=your_api_key_here
+DELTA_API_SECRET=your_api_secret_here
+DELTA_API_BASE_URL=https://api.delta.exchange
+COINGECKO_BASE_URL=https://api.coingecko.com/api/v3
+```
+
+> **Note:** New Delta API keys take ~5 minutes to become operational after creation.
 
 ### Run Development Server
 
@@ -153,25 +211,47 @@ NODE_ENV=production npx tsx server.ts
 | POST | `/api/portfolio/check-sltp` | Check if any SL/TP triggers hit against current prices |
 | GET | `/api/transactions` | Get all trade transactions |
 
+### Delta Exchange API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/delta/status` | Check if Delta API is configured and reachable |
+| GET | `/api/delta/tickers` | Get all tickers (30s cache) |
+| GET | `/api/delta/ticker/:symbol` | Get ticker for a specific symbol |
+| GET | `/api/delta/products` | Get all products/instruments (60s cache) |
+| GET | `/api/delta/candles/:symbol` | Get OHLCV candles (query: resolution, start, end) |
+| GET | `/api/delta/orderbook/:productId` | Get order book for a product |
+| POST | `/api/delta/orders` | Place an order (body: product_id, size, side, order_type, limit_price?) |
+| GET | `/api/delta/positions` | Get open positions |
+| GET | `/api/delta/orders` | Get open orders (query: product_id?) |
+| GET | `/api/delta/fills` | Get trade fill history (query: product_id?) |
+| GET | `/api/delta/wallet` | Get wallet/balance info |
+| DELETE | `/api/delta/orders` | Cancel an order (body: id, product_id) |
+
 ---
 
 ## Project Structure
 
 ```
-├── server.ts              # Express backend (CoinGecko proxy, watchlist, portfolio, SL/TP, transactions)
+├── server.ts              # Express backend (CoinGecko proxy, Delta API proxy, portfolio, SL/TP)
 ├── vite.config.ts         # Vite build configuration with Vitest test config
 ├── tsconfig.json          # TypeScript compiler config
 ├── data.json              # JSON file database (watchlist + portfolio + transactions persistence)
 ├── index.html             # HTML entry point
+├── .env.example           # Environment variable template (Delta API + CoinGecko)
 ├── src/
 │   ├── main.tsx           # React entry point
-│   ├── App.tsx            # Root component with ThemeProvider + QueryClientProvider
+│   ├── App.tsx            # Root component with ThemeProvider + QueryClientProvider + ToastProvider
 │   ├── index.css          # Tailwind CSS v4 + global styles + light mode overrides
 │   ├── types/market.ts    # Interfaces (Coin, WatchlistItem, PortfolioHolding, TradeTransaction, SLTPConfig)
+│   ├── lib/
+│   │   └── deltaClient.ts      # Delta Exchange REST API client with HMAC-SHA256 signing
 │   ├── hooks/
 │   │   ├── useMarketData.ts    # React Query hook for market data (30s polling)
 │   │   ├── useWatchlist.ts     # React Query hook for watchlist CRUD
 │   │   ├── usePortfolio.ts     # React Query hook for portfolio buy/sell/SL-TP/transactions
+│   │   ├── useDelta.ts         # React Query hooks for Delta API (status, tickers, candles)
+│   │   ├── useToast.tsx        # Toast notification provider + hook (success/error/warning/info)
 │   │   └── useTheme.tsx        # ThemeProvider context (Dark/Light/System)
 │   ├── components/
 │   │   ├── layout/
@@ -182,7 +262,7 @@ NODE_ENV=production npx tsx server.ts
 │   │   │   ├── Card.tsx
 │   │   │   ├── StatCard.tsx
 │   │   │   ├── MarketTable.tsx       # Sortable market table with Trade buttons
-│   │   │   ├── TradeModal.tsx        # Buy/Sell modal with SL/TP inputs
+│   │   │   ├── TradeModal.tsx        # Buy/Sell modal with SL/TP, 2-step confirmation, toast feedback
 │   │   │   ├── WatchlistSidebar.tsx  # Clickable watchlist items + remove
 │   │   │   ├── GainersLosersGrid.tsx # Interactive gainers/losers with Trade
 │   │   │   ├── LiveFeedSidebar.tsx
@@ -234,13 +314,20 @@ NODE_ENV=production npx tsx server.ts
 | 24 | **Security** | API key leaked in `data.json` | data.json, .gitignore | Removed key, `.gitignore` updated |
 | 25 | **Security** | No input validation on API endpoints | server.ts | Added type checks, sanitization, length limits, NaN/Infinity guards |
 | 26 | **Security** | No bounds checking on amounts (could send negative or infinite values) | server.ts | Added `Number.isFinite()` checks and upper bounds |
+| 27 | **High** | No trade confirmation — accidental clicks could execute trades | TradeModal.tsx | Added 2-step confirmation: click → review → confirm |
+| 28 | **High** | No user feedback on trade execution (silent success/failure) | Multiple files | Added toast notification system with 4 severity levels |
+| 29 | **High** | No SL/TP trigger notifications — user unaware of auto-sells | Dashboard.tsx | Added toast alerts when Stop Loss or Take Profit triggers fire |
+| 30 | **High** | CoinGecko only returned 10 coins, limiting market coverage | server.ts | Increased `per_page` from 10 to 25 |
+| 31 | **Feature** | No professional trading data integration | Multiple files | Added Delta Exchange API with HMAC-SHA256 auth (13 endpoints) |
+| 32 | **Feature** | No error classification — generic error messages everywhere | deltaClient.ts | Added `DeltaApiError` with kind classification (auth/rate-limit/network/server) |
 
 ---
 
 ## Security Measures
 
 - **No secrets committed** — `.env` and `.env.*` excluded via `.gitignore`
-- **Server-side API proxy** — CoinGecko API calls go through Express, no API keys exposed to the client
+- **Server-side API proxy** — CoinGecko and Delta Exchange API calls go through Express, no API keys exposed to the browser
+- **HMAC-SHA256 signing** — Delta Exchange requests are signed server-side with timestamp-based authentication
 - **Input sanitization** — All POST endpoints validate types, trim whitespace, enforce length limits
 - **NaN/Infinity guards** — `Number.isFinite()` checks on all numeric inputs
 - **Insufficient balance check** — Sell endpoint verifies the user holds enough before executing
@@ -259,6 +346,8 @@ NODE_ENV=production npx tsx server.ts
 | State | TanStack React Query |
 | Backend | Express, tsx |
 | Data | JSON file database |
+| Market API | CoinGecko REST API |
+| Trading API | Delta Exchange REST API (HMAC-SHA256) |
 | Charts | Recharts |
 | Icons | Lucide React |
 | Testing | Vitest, Testing Library |

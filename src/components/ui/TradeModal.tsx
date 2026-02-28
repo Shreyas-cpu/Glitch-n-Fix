@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Coin } from "../../types/market";
 import { usePortfolio } from "../../hooks/usePortfolio";
+import { useToast } from "../../hooks/useToast";
 
 interface TradeModalProps {
   coin: Coin;
@@ -21,12 +22,13 @@ interface TradeModalProps {
 export const TradeModal = ({ coin, onClose }: TradeModalProps) => {
   const [mode, setMode] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "confirm" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [takeProfit, setTakeProfit] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { buy, sell, setSLTP, portfolio } = usePortfolio();
+  const { toast } = useToast();
 
   const holding = portfolio.find((p) => p.coinId === coin.id);
   const parsedAmount = parseFloat(amount);
@@ -40,6 +42,12 @@ export const TradeModal = ({ coin, onClose }: TradeModalProps) => {
 
   const handleTrade = async () => {
     if (!isValidAmount) return;
+
+    // First click → show confirmation; second click → execute
+    if (status !== "confirm") {
+      setStatus("confirm");
+      return;
+    }
 
     setStatus("loading");
     setErrorMsg("");
@@ -70,12 +78,19 @@ export const TradeModal = ({ coin, onClose }: TradeModalProps) => {
         });
       }
       setStatus("success");
+      toast(
+        "success",
+        `${mode === "buy" ? "Bought" : "Sold"} ${parsedAmount} ${coin.symbol.toUpperCase()}`,
+        `Total: $${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      );
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (err: any) {
+      const msg = err?.response?.data?.error || "Transaction failed. Please try again.";
       setStatus("error");
-      setErrorMsg(err?.response?.data?.error || "Transaction failed. Please try again.");
+      setErrorMsg(msg);
+      toast("error", "Trade Failed", msg);
     }
   };
 
@@ -171,7 +186,7 @@ export const TradeModal = ({ coin, onClose }: TradeModalProps) => {
               step="any"
               min="0"
               value={amount}
-              onChange={(e) => { setAmount(e.target.value); setStatus("idle"); }}
+              onChange={(e) => { setAmount(e.target.value); if (status === "confirm" || status === "error") setStatus("idle"); }}
               placeholder="0.00"
               className="w-full bg-[#1A1B1E] border border-[#2A2B2E] rounded-lg px-4 py-3 text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
             />
@@ -285,6 +300,19 @@ export const TradeModal = ({ coin, onClose }: TradeModalProps) => {
             </div>
           )}
 
+          {/* Confirmation Banner */}
+          {status === "confirm" && (
+            <div className="flex items-center gap-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 text-yellow-400 text-sm">
+              <AlertCircle size={16} />
+              <span>
+                Confirm {mode === "buy" ? "buying" : "selling"}{" "}
+                <strong>{parsedAmount} {coin.symbol.toUpperCase()}</strong> at{" "}
+                <strong>${coin.current_price?.toLocaleString()}</strong> for a total of{" "}
+                <strong>${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>?
+              </span>
+            </div>
+          )}
+
           {/* Status Messages */}
           {status === "success" && (
             <div className="flex items-center gap-2 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-400 text-sm">
@@ -302,27 +330,44 @@ export const TradeModal = ({ coin, onClose }: TradeModalProps) => {
           )}
 
           {/* Action Button */}
-          <button
-            onClick={handleTrade}
-            disabled={!isValidAmount || status === "loading" || status === "success"}
-            className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-              mode === "buy"
-                ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                : "bg-red-500 text-white hover:bg-red-600"
-            }`}
-          >
-            {status === "loading" ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                {mode === "buy" ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                {mode === "buy" ? "Buy" : "Sell"} {coin.symbol.toUpperCase()}
-              </>
+          <div className="flex gap-3">
+            {status === "confirm" && (
+              <button
+                onClick={() => setStatus("idle")}
+                className="flex-1 py-3 rounded-xl text-sm font-bold transition-all bg-zinc-700 text-white hover:bg-zinc-600"
+              >
+                Cancel
+              </button>
             )}
-          </button>
+            <button
+              onClick={handleTrade}
+              disabled={!isValidAmount || status === "loading" || status === "success"}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                status === "confirm"
+                  ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                  : mode === "buy"
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                    : "bg-red-500 text-white hover:bg-red-600"
+              }`}
+            >
+              {status === "loading" ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Processing...
+                </>
+              ) : status === "confirm" ? (
+                <>
+                  <ShieldAlert size={16} />
+                  Confirm {mode === "buy" ? "Buy" : "Sell"}
+                </>
+              ) : (
+                <>
+                  {mode === "buy" ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                  {mode === "buy" ? "Buy" : "Sell"} {coin.symbol.toUpperCase()}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
