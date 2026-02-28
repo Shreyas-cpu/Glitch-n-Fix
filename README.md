@@ -53,7 +53,6 @@ In total, **14 critical bugs and vulnerabilities** were identified and fixed. Fo
 
    ```env
    VITE_APP_URL="http://localhost:3000"
-   GEMINI_API_KEY="your_api_key_here" # Not required for core functionality
    ```
 
 3. **Start the Development Server:**
