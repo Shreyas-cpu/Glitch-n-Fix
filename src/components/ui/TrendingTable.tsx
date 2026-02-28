@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { ResponsiveContainer, AreaChart, Area, YAxis } from "recharts";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, ArrowRightLeft } from "lucide-react";
 
 export interface TrendingToken {
   id: string;
@@ -14,9 +14,12 @@ export interface TrendingToken {
 
 interface TrendingTableProps {
   tokens: TrendingToken[];
+  onTokenClick?: (token: TrendingToken) => void;
+  onTrade?: (token: TrendingToken) => void;
+  selectedTokenId?: string | null;
 }
 
-export const TrendingTable = ({ tokens }: TrendingTableProps) => {
+export const TrendingTable = ({ tokens, onTokenClick, onTrade, selectedTokenId }: TrendingTableProps) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse">
@@ -26,7 +29,8 @@ export const TrendingTable = ({ tokens }: TrendingTableProps) => {
             <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Price</th>
             <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Vol Change</th>
             <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Sentiment</th>
-            <th className="px-6 py-4 text-xs text-zinc-500 uppercase text-right w-48">7d Trend</th>
+            <th className="px-6 py-4 text-xs text-zinc-500 uppercase w-48">7d Trend</th>
+            <th className="px-6 py-4 text-right"></th>
           </tr>
         </thead>
         <tbody>
@@ -35,16 +39,24 @@ export const TrendingTable = ({ tokens }: TrendingTableProps) => {
               token.sparkline[token.sparkline.length - 1] >= token.sparkline[0];
             const strokeColor = isPositive ? "#10b981" : "#ef4444";
             const gradientId = `trendGrad-${token.id}`;
+            const isSelected = selectedTokenId === token.id;
 
             return (
               <motion.tr
                 key={token.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="hover:bg-[#151619] transition-colors cursor-pointer"
+                whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                onClick={() => onTokenClick?.(token)}
+                className={`transition-colors cursor-pointer group ${
+                  isSelected ? "bg-[#141414]" : "hover:bg-[#151619]"
+                }`}
               >
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#1A1B1E] border border-[#2A2B2E] flex items-center justify-center text-xs font-bold text-white">
+                      {token.symbol.substring(0, 2)}
+                    </div>
                     <div>
                       <div className="text-sm font-semibold text-white">{token.symbol}</div>
                       <div className="text-xs text-zinc-500">{token.name}</div>
@@ -96,6 +108,18 @@ export const TrendingTable = ({ tokens }: TrendingTableProps) => {
                       />
                     </AreaChart>
                   </ResponsiveContainer>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTrade?.(token);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-all px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-semibold hover:bg-emerald-500/20 flex items-center gap-1"
+                  >
+                    <ArrowRightLeft size={12} />
+                    Trade
+                  </button>
                 </td>
               </motion.tr>
             );

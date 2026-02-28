@@ -4,6 +4,7 @@ import { SectorHeatmap, Sector } from "../ui/SectorHeatmap";
 import { TrendingTable, TrendingToken } from "../ui/TrendingTable";
 import { Card } from "../ui/Card";
 import { Filter } from "lucide-react";
+import { Coin } from "../../types/market";
 
 const MOCK_GAINERS: GainerLoser[] = [
   { id: "g1", symbol: "PEPE", name: "Pepe", price: 0.0000124, change: 42.5 },
@@ -49,21 +50,80 @@ const MOCK_TRENDING_TOKENS: TrendingToken[] = [
   { id: "t6", symbol: "TON", name: "Toncoin", price: 6.8, volChange: 84.1, sentiment: 75, sparkline: generateSparkline("up") },
 ];
 
-export const TrendingView = () => {
+/** Convert any trending-view token into a Coin for the TradeModal */
+function toTradeCoin(token: { id: string; symbol: string; name: string; price: number; change?: number }): Coin {
+  return {
+    id: token.id,
+    symbol: token.symbol,
+    name: token.name,
+    current_price: token.price,
+    price_change_percentage_24h: token.change ?? 0,
+    market_cap: 0,
+  };
+}
+
+interface TrendingViewProps {
+  onTrade?: (coin: Coin) => void;
+  onNavigateToDashboard?: (searchQuery: string) => void;
+}
+
+export const TrendingView = ({ onTrade, onNavigateToDashboard }: TrendingViewProps) => {
   const [sortField, setSortField] = useState<"volChange" | "sentiment">("volChange");
+  const [selectedSectorId, setSelectedSectorId] = useState<string | null>(null);
+  const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
 
   const sortedTokens = [...MOCK_TRENDING_TOKENS].sort((a, b) => b[sortField] - a[sortField]);
+
+  const handleTokenTrade = (token: { id: string; symbol: string; name: string; price: number; change?: number }) => {
+    onTrade?.(toTradeCoin(token));
+  };
+
+  const handleTokenClick = (token: { name: string; id?: string }) => {
+    setSelectedTokenId(token.id ?? null);
+    onNavigateToDashboard?.(token.name);
+  };
+
+  const handleSectorClick = (sector: Sector) => {
+    setSelectedSectorId((prev) => (prev === sector.id ? null : sector.id));
+    onNavigateToDashboard?.(sector.name);
+  };
+
+  const handleGainerLoserTrade = (token: GainerLoser) => {
+    handleTokenTrade(token);
+  };
+
+  const handleGainerLoserClick = (token: GainerLoser) => {
+    handleTokenClick(token);
+  };
+
+  const handleTrendingTrade = (token: TrendingToken) => {
+    handleTokenTrade({ ...token, change: token.volChange });
+  };
+
+  const handleTrendingClick = (token: TrendingToken) => {
+    handleTokenClick(token);
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto flex flex-col gap-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-auto lg:h-[400px]">
-        <GainersLosersGrid gainers={MOCK_GAINERS} losers={MOCK_LOSERS} />
+        <GainersLosersGrid
+          gainers={MOCK_GAINERS}
+          losers={MOCK_LOSERS}
+          onTokenClick={handleGainerLoserClick}
+          onTrade={handleGainerLoserTrade}
+        />
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-white tracking-tight">Sector Heatmap</h2>
+            <span className="text-xs text-zinc-500">Click a sector to explore</span>
           </div>
           <div className="flex-1">
-            <SectorHeatmap sectors={MOCK_SECTORS} />
+            <SectorHeatmap
+              sectors={MOCK_SECTORS}
+              onSectorClick={handleSectorClick}
+              selectedSectorId={selectedSectorId}
+            />
           </div>
         </div>
       </div>
@@ -98,7 +158,12 @@ export const TrendingView = () => {
           </div>
         </div>
         <Card>
-          <TrendingTable tokens={sortedTokens} />
+          <TrendingTable
+            tokens={sortedTokens}
+            onTokenClick={handleTrendingClick}
+            onTrade={handleTrendingTrade}
+            selectedTokenId={selectedTokenId}
+          />
         </Card>
       </div>
     </div>

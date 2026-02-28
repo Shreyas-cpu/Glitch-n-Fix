@@ -6,6 +6,7 @@ import {
   ArrowDownRight,
   ChevronUp,
   ChevronDown,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Coin } from "../../types/market";
 
@@ -29,6 +30,7 @@ interface MarketTableProps {
   onSort: (field: SortField) => void;
   selectedCoinId: string | null;
   onRowClick: (coinId: string) => void;
+  onTrade?: (coin: Coin) => void;
 }
 
 export const MarketTable = ({
@@ -39,6 +41,7 @@ export const MarketTable = ({
   onSort,
   selectedCoinId,
   onRowClick,
+  onTrade,
 }: MarketTableProps) => {
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortConfig.field !== field) return null;
@@ -120,7 +123,17 @@ export const MarketTable = ({
               <td className="px-6 py-4 text-zinc-400">
                 ${(coin.market_cap / 1e9).toFixed(2)}B
               </td>
-              <td className="px-6 py-4 text-right">
+              <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTrade?.(coin);
+                  }}
+                  className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-semibold hover:bg-emerald-500/20 transition-all flex items-center gap-1"
+                >
+                  <ArrowRightLeft size={12} />
+                  Trade
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

@@ -9,9 +9,11 @@ export interface Sector {
 
 interface SectorHeatmapProps {
   sectors: Sector[];
+  onSectorClick?: (sector: Sector) => void;
+  selectedSectorId?: string | null;
 }
 
-export const SectorHeatmap = ({ sectors }: SectorHeatmapProps) => {
+export const SectorHeatmap = ({ sectors, onSectorClick, selectedSectorId }: SectorHeatmapProps) => {
   const layoutStyles = [
     "col-span-12 md:col-span-8 row-span-2",
     "col-span-6 md:col-span-4 row-span-1",
@@ -32,17 +34,27 @@ export const SectorHeatmap = ({ sectors }: SectorHeatmapProps) => {
             ? `rgba(16, 185, 129, ${0.1 + intensity * 0.4})`
             : `rgba(239, 68, 68, ${0.1 + intensity * 0.4})`;
           const styleClass = layoutStyles[index] || "col-span-4 row-span-1";
+          const isSelected = selectedSectorId === sector.id;
 
           return (
             <motion.div
               key={sector.id}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               transition={{ delay: index * 0.05 }}
+              onClick={() => onSectorClick?.(sector)}
               className={`relative rounded-xl overflow-hidden group cursor-pointer ${styleClass}`}
               style={{ backgroundColor: bgColorStyle }}
             >
-              <div className="absolute inset-0 border border-white/5 rounded-xl group-hover:border-white/20 transition-colors z-10" />
+              <div
+                className={`absolute inset-0 border rounded-xl transition-colors z-10 ${
+                  isSelected
+                    ? "border-emerald-400 ring-1 ring-emerald-400/30"
+                    : "border-white/5 group-hover:border-white/30"
+                }`}
+              />
               <div className="absolute inset-0 p-4 flex flex-col justify-between z-20">
                 <div className="text-white/90 font-bold group-hover:text-white transition-colors truncate">
                   {sector.name}
@@ -59,6 +71,14 @@ export const SectorHeatmap = ({ sectors }: SectorHeatmapProps) => {
                     {isPositive ? "+" : "-"}
                     {percentage.toFixed(2)}%
                   </div>
+                </div>
+              </div>
+              {/* Click indicator */}
+              <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/70">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 </div>
               </div>
             </motion.div>

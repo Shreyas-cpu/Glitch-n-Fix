@@ -7,13 +7,14 @@ import {
   PillSelector,
 } from "../ui/SettingsComponents";
 import { Wallet, Zap, LogOut, ChevronDown } from "lucide-react";
+import { useTheme } from "../../hooks/useTheme";
 
 export const SettingsView = () => {
   const [slippage, setSlippage] = useState("0.5%");
   const [gasPriority, setGasPriority] = useState("Fast");
   const [twoFactor, setTwoFactor] = useState(false);
   const [timeout, setTimeoutVal] = useState("1h");
-  const [theme, setTheme] = useState("Dark");
+  const { theme, setTheme } = useTheme();
   const [desktopNotifs, setDesktopNotifs] = useState(true);
 
   return (
@@ -89,10 +90,10 @@ export const SettingsView = () => {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium text-white">Terminal Theme</div>
-              <div className="text-xs text-zinc-500 mt-0.5">Nexus currently only supports dark mode</div>
+              <div className="text-xs text-zinc-500 mt-0.5">Switch between light and dark appearance</div>
             </div>
             <div className="w-48">
-              <PillSelector options={["Light", "System", "Dark"]} selected={theme} onChange={setTheme} />
+              <PillSelector options={["Light", "System", "Dark"]} selected={theme} onChange={(val) => setTheme(val as "Light" | "System" | "Dark")} />
             </div>
           </div>
           <div className="h-px bg-[#1A1B1E] w-full" />

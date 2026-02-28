@@ -1,4 +1,4 @@
-export interface Coin {
+﻿export interface Coin {
   id: string;
   symbol: string;
   name: string;
@@ -12,4 +12,25 @@ export interface WatchlistItem {
   id: string;
   symbol: string;
   name: string;
+}
+
+export interface PortfolioHolding {
+  coinId: string;
+  symbol: string;
+  name: string;
+  amount: number;
+  avgPrice: number;
+}
+
+export interface TradeTransaction {
+  id: string;
+  type: "buy" | "sell";
+  coinId: string;
+  symbol: string;
+  name: string;
+  amount: number;
+  pricePerUnit: number;
+  total: number;
+  pnl?: number;
+  timestamp: string;
 }

@@ -8,8 +8,10 @@ import { StatCard } from "../ui/StatCard";
 import { Card } from "../ui/Card";
 import { MarketTable, SortConfig, SortField } from "../ui/MarketTable";
 import { WatchlistSidebar } from "../ui/WatchlistSidebar";
+import { TradeModal } from "../ui/TradeModal";
 import { ActivityView } from "../views/ActivityView";
 import { TrendingView } from "../views/TrendingView";
+import { PortfolioView } from "../views/PortfolioView";
 import { SettingsView } from "../views/SettingsView";
 
 import { TrendingUp, Activity, ShieldCheck } from "lucide-react";
@@ -35,6 +37,7 @@ export default function Dashboard() {
     field: "market_cap",
     direction: "desc",
   });
+  const [tradeCoin, setTradeCoin] = useState<Coin | null>(null);
 
   // Fetch Market Data
   const {
@@ -219,7 +222,7 @@ export default function Dashboard() {
                             itemStyle={{
                               color: selectedCoinData.price_change_percentage_24h >= 0 ? "#10b981" : "#ef4444",
                             }}
-                            formatter={(value: number) => [`$${value.toLocaleString()}`, "Price"]}
+                            formatter={(value: any) => [`$${value?.toLocaleString() || 0}`, "Price"]}
                             labelFormatter={() => ""}
                           />
                           <Area
@@ -249,6 +252,7 @@ export default function Dashboard() {
                   onSort={handleSort}
                   selectedCoinId={selectedCoinId}
                   onRowClick={setSelectedCoinId}
+                  onTrade={(coin) => setTradeCoin(coin)}
                 />
               </Card>
             </div>
@@ -261,14 +265,27 @@ export default function Dashboard() {
               />
             </div>
           </div>
+        ) : activeTab === "portfolio" ? (
+          <PortfolioView />
         ) : activeTab === "activity" ? (
           <ActivityView />
         ) : activeTab === "trending" ? (
-          <TrendingView />
+          <TrendingView
+            onTrade={(coin) => setTradeCoin(coin)}
+            onNavigateToDashboard={(query) => {
+              setSearchQuery(query);
+              setActiveTab("dashboard");
+            }}
+          />
         ) : activeTab === "settings" ? (
           <SettingsView />
         ) : null}
       </main>
+
+      {/* Trade Modal */}
+      {tradeCoin && (
+        <TradeModal coin={tradeCoin} onClose={() => setTradeCoin(null)} />
+      )}
     </div>
   );
 }

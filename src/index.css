@@ -6,24 +6,72 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* ── Dark Theme (default) ── */
 body {
   background-color: #0a0a0b;
   color: #d4d4d8;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0b; }
+::-webkit-scrollbar-thumb { background: #151619; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+/* ── Light Theme Overrides ── */
+.light body,
+html.light body {
+  background-color: #f4f6f9;
+  color: #334155;
 }
 
-::-webkit-scrollbar-track {
-  background: #0a0a0b;
+html.light ::-webkit-scrollbar-track { background: #f4f6f9; }
+html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+/* Surface / card backgrounds */
+html.light .bg-\[\#0A0A0B\],
+html.light .bg-\[\#0a0a0b\] { background-color: #f4f6f9 !important; }
+
+html.light .bg-\[\#151619\] { background-color: #ffffff !important; }
+
+html.light .bg-\[\#1A1B1E\] { background-color: #f1f5f9 !important; }
+
+html.light .bg-\[\#141414\] { background-color: #e2e8f0 !important; }
+
+html.light .bg-\[\#2A2B2E\] { background-color: #e2e8f0 !important; }
+
+/* Borders */
+html.light .border-\[\#141414\] { border-color: #e2e8f0 !important; }
+html.light .border-\[\#1A1B1E\] { border-color: #e2e8f0 !important; }
+html.light .border-\[\#2A2B2E\] { border-color: #cbd5e1 !important; }
+
+/* Text colors */
+html.light .text-white { color: #0f172a !important; }
+html.light .text-zinc-300 { color: #334155 !important; }
+html.light .text-zinc-400 { color: #475569 !important; }
+html.light .text-zinc-500 { color: #64748b !important; }
+html.light .text-zinc-600 { color: #475569 !important; }
+html.light .text-zinc-800 { color: #1e293b !important; }
+
+/* Specific overrides for backgrounds with opacity */
+html.light .bg-\[\#0A0A0B\]\/80 { background-color: rgba(244, 246, 249, 0.9) !important; }
+
+/* Placeholder text */
+html.light .placeholder-zinc-500::placeholder { color: #94a3b8 !important; }
+html.light .placeholder-zinc-600::placeholder { color: #94a3b8 !important; }
+
+/* White background hover states */
+html.light .hover\:bg-white\/5:hover { background-color: rgba(0, 0, 0, 0.04) !important; }
+html.light .hover\:bg-\[\#151619\]:hover { background-color: #f1f5f9 !important; }
+html.light .hover\:bg-\[\#2A2B2E\]:hover { background-color: #e2e8f0 !important; }
+
+/* Dividers */
+html.light .bg-zinc-800 { background-color: #e2e8f0 !important; }
+
+/* Wallet connect button (light) */
+html.light .bg-white.text-black {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #151619;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #10b981;
-}
+/* Keep accent colors (emerald, red) the same in both themes */

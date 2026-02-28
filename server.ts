@@ -25,7 +25,7 @@ async function startServer() {
       const data = await fs.readFile(DB_PATH, "utf-8");
       return JSON.parse(data);
     } catch {
-      return { watchlist: [], portfolio: [] };
+      return { watchlist: [], portfolio: [], transactions: [] };
     }
   };
 
@@ -62,7 +62,8 @@ async function startServer() {
     }
   });
 
-  // Watchlist CRUD
+  // ── Watchlist CRUD ──
+
   app.get("/api/watchlist", async (_req, res) => {
     const db = await readDB();
     res.json(db.watchlist || []);
@@ -115,7 +116,145 @@ async function startServer() {
     res.json(db.watchlist);
   });
 
-  // Vite dev middleware or static serve
+  // ── Portfolio CRUD ──
+
+  app.get("/api/portfolio", async (_req, res) => {
+    const db = await readDB();
+    res.json(db.portfolio || []);
+  });
+
+  // BUY – adds to portfolio, records transaction
+  app.post("/api/portfolio/buy", async (req, res) => {
+    const { coinId, symbol, name, amount, pricePerUnit } = req.body;
+
+    // Input validation
+    if (!coinId || typeof coinId !== "string" || !coinId.trim()) {
+      return res.status(400).json({ error: "Invalid coinId" });
+    }
+    if (!symbol || typeof symbol !== "string") {
+      return res.status(400).json({ error: "Invalid symbol" });
+    }
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ error: "Invalid name" });
+    }
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0 || amount > 1e12) {
+      return res.status(400).json({ error: "Invalid amount: must be > 0" });
+    }
+    if (typeof pricePerUnit !== "number" || !Number.isFinite(pricePerUnit) || pricePerUnit <= 0) {
+      return res.status(400).json({ error: "Invalid pricePerUnit" });
+    }
+
+    const db = await readDB();
+    if (!db.portfolio) db.portfolio = [];
+    if (!db.transactions) db.transactions = [];
+
+    const existing = db.portfolio.find((p: any) => p.coinId === coinId.trim().toLowerCase());
+    const totalCost = amount * pricePerUnit;
+
+    if (existing) {
+      // Average cost basis
+      const totalPrevCost = existing.amount * existing.avgPrice;
+      existing.amount += amount;
+      existing.avgPrice = (totalPrevCost + totalCost) / existing.amount;
+    } else {
+      db.portfolio.push({
+        coinId: coinId.trim().toLowerCase(),
+        symbol: symbol.trim().toUpperCase(),
+        name: name.trim().substring(0, 100),
+        amount,
+        avgPrice: pricePerUnit,
+      });
+    }
+
+    // Record transaction
+    db.transactions.unshift({
+      id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: "buy",
+      coinId: coinId.trim().toLowerCase(),
+      symbol: symbol.trim().toUpperCase(),
+      name: name.trim().substring(0, 100),
+      amount,
+      pricePerUnit,
+      total: totalCost,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Keep last 100 transactions
+    if (db.transactions.length > 100) {
+      db.transactions = db.transactions.slice(0, 100);
+    }
+
+    await writeDB(db);
+    res.json({ portfolio: db.portfolio, transaction: db.transactions[0] });
+  });
+
+  // SELL – removes from portfolio, records transaction
+  app.post("/api/portfolio/sell", async (req, res) => {
+    const { coinId, amount, pricePerUnit } = req.body;
+
+    if (!coinId || typeof coinId !== "string") {
+      return res.status(400).json({ error: "Invalid coinId" });
+    }
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: "Invalid amount: must be > 0" });
+    }
+    if (typeof pricePerUnit !== "number" || !Number.isFinite(pricePerUnit) || pricePerUnit <= 0) {
+      return res.status(400).json({ error: "Invalid pricePerUnit" });
+    }
+
+    const db = await readDB();
+    if (!db.portfolio) db.portfolio = [];
+    if (!db.transactions) db.transactions = [];
+
+    const existing = db.portfolio.find((p: any) => p.coinId === coinId.trim().toLowerCase());
+
+    if (!existing) {
+      return res.status(400).json({ error: "You don't hold this coin" });
+    }
+    if (existing.amount < amount) {
+      return res.status(400).json({
+        error: `Insufficient balance. You hold ${existing.amount} but tried to sell ${amount}`,
+      });
+    }
+
+    const totalRevenue = amount * pricePerUnit;
+    existing.amount -= amount;
+
+    // Remove from portfolio if amount reaches 0
+    if (existing.amount <= 1e-10) {
+      db.portfolio = db.portfolio.filter((p: any) => p.coinId !== coinId.trim().toLowerCase());
+    }
+
+    // Record transaction
+    db.transactions.unshift({
+      id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: "sell",
+      coinId: coinId.trim().toLowerCase(),
+      symbol: existing.symbol,
+      name: existing.name,
+      amount,
+      pricePerUnit,
+      total: totalRevenue,
+      pnl: (pricePerUnit - existing.avgPrice) * amount,
+      timestamp: new Date().toISOString(),
+    });
+
+    if (db.transactions.length > 100) {
+      db.transactions = db.transactions.slice(0, 100);
+    }
+
+    await writeDB(db);
+    res.json({ portfolio: db.portfolio, transaction: db.transactions[0] });
+  });
+
+  // Transaction history
+  app.get("/api/transactions", async (_req, res) => {
+    const db = await readDB();
+    res.json(db.transactions || []);
+  });
+
+  // ── Vite dev middleware or static serve ──
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

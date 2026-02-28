@@ -4,10 +4,11 @@ import {
   Activity,
   TrendingUp,
   Settings,
+  Wallet,
   LucideIcon,
 } from "lucide-react";
 
-export type TabType = "dashboard" | "activity" | "trending" | "settings";
+export type TabType = "dashboard" | "portfolio" | "activity" | "trending" | "settings";
 
 interface SidebarProps {
   activeTab: TabType;
@@ -16,6 +17,7 @@ interface SidebarProps {
 
 const navItems: { id: TabType; icon: LucideIcon; label: string }[] = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { id: "portfolio", icon: Wallet, label: "Portfolio" },
   { id: "activity", icon: Activity, label: "Activity" },
   { id: "trending", icon: TrendingUp, label: "Trending" },
   { id: "settings", icon: Settings, label: "Settings" },

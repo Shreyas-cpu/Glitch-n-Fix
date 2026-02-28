@@ -21,5 +21,84 @@
       "name": "BNB"
     }
   ],
-  "portfolio": []
+  "portfolio": [
+    {
+      "coinId": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "amount": 3,
+      "avgPrice": 64250.666666666664
+    },
+    {
+      "coinId": "tether",
+      "symbol": "USDT",
+      "name": "Tether",
+      "amount": 1,
+      "avgPrice": 0.999888
+    },
+    {
+      "coinId": "ripple",
+      "symbol": "XRP",
+      "name": "XRP",
+      "amount": 4,
+      "avgPrice": 1.32
+    }
+  ],
+  "transactions": [
+    {
+      "id": "tx-1772260788473-p22x30",
+      "type": "buy",
+      "coinId": "ripple",
+      "symbol": "XRP",
+      "name": "XRP",
+      "amount": 4,
+      "pricePerUnit": 1.32,
+      "total": 5.28,
+      "timestamp": "2026-02-28T06:39:48.473Z"
+    },
+    {
+      "id": "tx-1772260781602-fn6l13",
+      "type": "buy",
+      "coinId": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "amount": 1,
+      "pricePerUnit": 63716,
+      "total": 63716,
+      "timestamp": "2026-02-28T06:39:41.602Z"
+    },
+    {
+      "id": "tx-1772260623874-ovx97t",
+      "type": "buy",
+      "coinId": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "amount": 1,
+      "pricePerUnit": 64175,
+      "total": 64175,
+      "timestamp": "2026-02-28T06:37:03.874Z"
+    },
+    {
+      "id": "tx-1772259762554-tohk0o",
+      "type": "buy",
+      "coinId": "tether",
+      "symbol": "USDT",
+      "name": "Tether",
+      "amount": 1,
+      "pricePerUnit": 0.999888,
+      "total": 0.999888,
+      "timestamp": "2026-02-28T06:22:42.554Z"
+    },
+    {
+      "id": "tx-1772259747869-h7xt53",
+      "type": "buy",
+      "coinId": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "amount": 1,
+      "pricePerUnit": 64861,
+      "total": 64861,
+      "timestamp": "2026-02-28T06:22:27.869Z"
+    }
+  ]
 }
