@@ -1,0 +1,151 @@
+stages:
+  - build
+  - test
+  - security
+  - package
+  - update-config
+  - notify
+
+variables:
+  IMAGE_NAME: ghcr.io/$GITHUB_USERNAME/$GITHUB_REPO
+  IMAGE_TAG: $CI_COMMIT_SHA
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+build:
+  stage: build
+  image: node:20-alpine
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths: [node_modules/]
+  script:
+    - npm ci
+    - npm run build -w frontend
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+test:
+  stage: test
+  image: node:20-alpine
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths: [node_modules/]
+    policy: pull
+  script:
+    - npm ci
+    - npm test
+  coverage: '/All files\s*\|\s*(\d+)/'
+  artifacts:
+    when: always
+    reports:
+      junit: junit.xml
+    paths: [coverage/]
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+lint:
+  stage: test
+  image: node:20-alpine
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths: [node_modules/]
+    policy: pull
+  script:
+    - npm ci
+    - npm run lint
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+trivy-scan:
+  stage: security
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: ['']
+  script:
+    - trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+docker-build-push:
+  stage: package
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: '/certs'
+  before_script:
+    - echo "$GITHUB_PAT" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build -t "$IMAGE_NAME:$IMAGE_TAG" -t "$IMAGE_NAME:latest" .
+    - docker push "$IMAGE_NAME:$IMAGE_TAG"
+    - docker push "$IMAGE_NAME:latest"
+    - docker tag "$IMAGE_NAME:$IMAGE_TAG" "$CI_REGISTRY_IMAGE:$IMAGE_TAG"
+    - docker push "$CI_REGISTRY_IMAGE:$IMAGE_TAG"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "staging"
+
+update-config-repo:
+  stage: update-config
+  image: alpine/git:latest
+  before_script:
+    - apk add --no-cache curl
+    - ARCH=amd64
+    - |
+      case "$(uname -m)" in
+        aarch64|arm64) ARCH=arm64 ;;
+      esac
+    - wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}"
+    - chmod +x /usr/local/bin/yq
+  script:
+    - git config --global user.email "gitlab-ci@pipeline.bot"
+    - git config --global user.name "GitLab CI Bot"
+    - git clone "https://$GITHUB_USERNAME:$GITHUB_PAT@github.com/$GITHUB_USERNAME/$CONFIG_REPO.git" cfg
+    - cd cfg
+    - yq e ".image.tag = \"$IMAGE_TAG\"" -i "helm/$GITHUB_REPO/values.yaml"
+    - git add "helm/$GITHUB_REPO/values.yaml"
+    - |
+      if git diff --staged --quiet; then
+        echo "No config-repo changes to commit"
+      else
+        git commit -m "[CI] Update image tag to $IMAGE_TAG [skip ci]"
+        git push origin main
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "staging"
+
+post-github-status:
+  stage: notify
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl --request POST \
+        --header "Authorization: token $GITHUB_PAT" \
+        --header "Content-Type: application/json" \
+        --data "{\"state\":\"success\",\"target_url\":\"$CI_PIPELINE_URL\",\"description\":\"GitLab CI pipeline passed\",\"context\":\"gitlab-ci\"}" \
+        "https://api.github.com/repos/$GITHUB_USERNAME/$GITHUB_REPO/statuses/$CI_COMMIT_SHA"
+  when: on_success
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+post-github-status-failure:
+  stage: notify
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl --request POST \
+        --header "Authorization: token $GITHUB_PAT" \
+        --header "Content-Type: application/json" \
+        --data "{\"state\":\"failure\",\"target_url\":\"$CI_PIPELINE_URL\",\"description\":\"GitLab CI pipeline failed\",\"context\":\"gitlab-ci\"}" \
+        "https://api.github.com/repos/$GITHUB_USERNAME/$GITHUB_REPO/statuses/$CI_COMMIT_SHA"
+  when: on_failure
+  rules:
+    - if: $CI_COMMIT_BRANCH
